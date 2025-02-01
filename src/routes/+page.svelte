@@ -1,7 +1,8 @@
 <script>
 	import MovieCard from '$lib/components/MovieCard.svelte';
-	import Navbar from '$lib/components/Navbar.svelte';
 	import SeriesCard from '$lib/components/SeriesCard.svelte';
+	import Navbar from '$lib/components/Navbar.svelte';
+
 	import { onMount } from 'svelte';
 
 	let { data } = $props();
@@ -95,7 +96,7 @@
 				class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6"
 			>
 				{#each popularMovies.results as movie}
-					<SeriesCard {...movie} />
+					<MovieCard {...movie} />
 				{/each}
 			</div>
 		{/if}
@@ -109,7 +110,7 @@
 				class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
 			>
 				{#each newReleases.results as movie}
-					<SeriesCard {...movie} />
+					<MovieCard {...movie} />
 				{/each}
 			</div>
 		{/if}

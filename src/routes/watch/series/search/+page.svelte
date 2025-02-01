@@ -74,43 +74,16 @@
 			{/if}
 		</button>
 	</form>
-
 	{#if errorMessage}
-		<span class="p-3 text-white bg-red-600 rounded-md">{errorMessage}</span>
-	{/if}
-	<!-- Pagination Controls -->
-	{#if seriesResults.length > 0 && totalPages > 1}
-		<div class="flex flex-col items-center gap-4 mt-6 sm:flex-row">
-			<button
-				class="px-4 py-2 text-sm font-semibold bg-gray-800 rounded-md hover:bg-gray-700"
-				onclick={() => changePage(currentPage - 1)}
-				disabled={currentPage === 1}
-			>
-				Previous
-			</button>
-
-			<span class="px-4 py-2 text-sm font-semibold text-black bg-white rounded-md">
-				Page {currentPage} of {totalPages}
-			</span>
-
-			<button
-				class="px-4 py-2 text-sm font-semibold bg-gray-800 rounded-md hover:bg-gray-700"
-				onclick={() => changePage(currentPage + 1)}
-				disabled={currentPage === totalPages}
-			>
-				Next
-			</button>
-		</div>
+		<span class="p-3 text-white bg-red-600">{errorMessage}</span>
 	{/if}
 
 	<!-- Movie Results -->
 	<div
-		class="grid grid-cols-2 gap-4 mt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+		class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
 	>
-		{#each seriesResults.filter((series) => series.poster_path) as series}
-			<div class="p-2 mx-auto max-w-[150px] sm:max-w-none">
-				<SeriesCard {...series} class="w-full h-auto" />
-			</div>
+		{#each seriesResults.filter((movie) => movie.poster_path) as movie}
+			<SeriesCard {...movie} class="" />
 		{/each}
 	</div>
 

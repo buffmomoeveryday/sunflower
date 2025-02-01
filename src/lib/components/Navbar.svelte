@@ -7,8 +7,7 @@
 		{ name: 'Series', path: '/watch/series' },
 		{ name: 'Anime', path: '/watch/anime' },
 		{ name: 'Bollyhood', path: '/watch/bollyhood' },
-		{ name: 'Search Movie', path: '/watch/movie/search' },
-		{ name: 'Search Series', path: '/watch/series/search' }
+		{ name: 'Search', path: '/watch/movie/search' }
 	]);
 
 	function isActive(path) {

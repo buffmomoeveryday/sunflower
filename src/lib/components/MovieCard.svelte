@@ -3,23 +3,21 @@
 </script>
 
 <div
-	class="w-full transition-all duration-300 shadow-md sm:w-48 md:w-56 lg:w-64 group rounded-xl hover:shadow-xl hover:-translate-y-1"
+	class="w-full overflow-hidden transition-all duration-300 bg-gray-900 rounded-lg shadow-lg hover:shadow-xl hover:-translate-y-1"
 >
-	<a
-		href="/watch/movie/{props.id}"
-		class="block w-full p-2 text-center text-white transition duration-200 rounded-lg"
-	>
-		<div class="relative h-48 sm:h-64 md:h-72 lg:h-80">
+	<a href="/watch/movie/{props.id}" class="block text-white no-underline">
+		<div class="relative w-full pb-[150%]">
 			<img
 				src="https://image.tmdb.org/t/p/w185/{props.poster_path}"
 				alt={props.original_title}
-				class="absolute inset-0 object-cover w-full h-full rounded-t-xl"
+				class="absolute inset-0 object-cover w-full h-full rounded-t-lg"
 				loading="lazy"
 			/>
 		</div>
-
-		<div class="flex items-center justify-center h-12 p-2 sm:h-16">
-			<p class="text-sm sm:text-base line-clamp-2">{props.original_title}</p>
+		<div class="p-3">
+			<h3 class="text-sm font-medium text-center line-clamp-2 sm:text-base">
+				{props.original_title}
+			</h3>
 		</div>
 	</a>
 </div>

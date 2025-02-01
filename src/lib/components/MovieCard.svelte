@@ -8,7 +8,7 @@
 	<a href="/watch/movie/{props.id}" class="block text-white no-underline">
 		<div class="relative w-full pb-[150%]">
 			<img
-				src="https://image.tmdb.org/t/p/w185/{props.poster_path}"
+				src="https://image.tmdb.org/t/p/w500/{props.poster_path}"
 				alt={props.original_title}
 				class="absolute inset-0 object-cover w-full h-full rounded-t-lg"
 				loading="lazy"

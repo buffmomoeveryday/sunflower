@@ -8,6 +8,44 @@
 </script>
 
 <div class="min-h-screen p-4 text-white bg-black">
+	<div class="container p-4 mx-auto mt-6 rounded-lg">
+		<div class="flex items-start p-4 space-x-3 border border-blue-200 rounded-lg bg-blue-50">
+			<div class="flex-1 text-blue-900">
+				<div class="text-lg font-bold">For the best viewing experience without ads:</div>
+				<ul class="mt-2 ml-6 space-y-1 list-disc">
+					<li>
+						On mobile devices, we recommend using <a
+							href="https://play.google.com/store/apps/details?id=com.brave.browser&hl=en&pli=1"
+							target="_blank"
+							class="text-red-500 underline"
+							>Brave Browser Android
+						</a>
+						or
+						<a
+							href="https://apps.apple.com/us/app/brave-browser-search-engine/id1052879175"
+							target="_blank"
+							class="text-red-500 underline">Brave Browser IOS</a
+						>
+					</li>
+					<li>
+						Please install uBlock Origin Extension for <a
+							href="https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm?hl=en&pli=1"
+							target="_blank"
+							class="font-bold text-red-500 underline">Chrome</a
+						>
+						or
+						<a
+							href="https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/"
+							target="_blank"
+							class="font-bold text-red-500 underline"
+							>Firefox
+						</a>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+
 	<section class="container p-4 mx-auto mt-6 rounded-lg">
 		{#if popularMovies}
 			<h2 class="text-xl font-bold md:text-2xl">Popular Movies</h2>

@@ -5,10 +5,11 @@
 	let movie_id = $page.params.movie_id;
 
 	let iframeSources = $state([
+		`https://vidsrc.dev/embed/movie/${movie_id}`,
 		`https://vidsrc.icu/embed/movie/${movie_id}`,
 		`https://vidsrc.cc/v3/embed/movie/${movie_id}?autoPlay=true`,
 		`https://embed.su/embed/movie/${movie_id}?autoPlay=true`,
-		`https://vidsrc.dev/embed/movie/${movie_id}`
+		`https://vidsrc.to/embed/movie/${movie_id}`
 	]);
 
 	let selectedSource = $state(0);

@@ -5,9 +5,9 @@
 	const navItems = $state([
 		{ name: 'Movies', path: '/' },
 		{ name: 'Series', path: '/watch/series' },
-		{ name: 'Anime', path: '/watch/anime' },
+		// { name: 'Anime', path: '/watch/anime' },
 		{ name: 'Bollyhood', path: '/watch/bollyhood' },
-		{ name: 'Search', path: '/watch/movie/search' }
+		{ name: 'Search', path: '/watch/search' }
 	]);
 
 	function isActive(path) {
@@ -30,4 +30,4 @@
 		{/each}
 	</ul>
 </nav>
-<ProgressBar class="text-white" />
+<ProgressBar class="text-green-500" />

@@ -12,7 +12,7 @@
 	>
 		<div class="relative h-48 sm:h-64 md:h-72 lg:h-80">
 			<img
-				src="https://image.tmdb.org/t/p/w185/{props.poster_path}"
+				src="https://image.tmdb.org/t/p/w500/{props.poster_path}"
 				alt={props.original_title}
 				class="absolute inset-0 object-cover w-full h-full rounded-t-xl"
 				loading="lazy"

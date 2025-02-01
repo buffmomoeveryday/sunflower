@@ -9,6 +9,9 @@
 	let episodes = $state([]);
 	let selectedEpisode = $state(1);
 
+	// Local storage keys
+	const STORAGE_KEY = `series_${seriesDetailData.id}_progress`;
+
 	// Fetch episodes for the selected season
 	async function fetchEpisodes(seasonNumber) {
 		selectedSeason = seasonNumber;
@@ -27,15 +30,41 @@
 		}
 	}
 
-	// Update the selected episode
+	// Update the selected episode and save to local storage
 	function selectEpisode(episodeId) {
 		selectedEpisode = episodeId;
+		saveProgressAndSelectedSource();
 		console.log('Selected Episode ID:', selectedEpisode);
 	}
 
-	// Initialize with the first season's episodes
+	// Save progress to local storage
+	function saveProgressAndSelectedSource() {
+		localStorage.setItem(
+			STORAGE_KEY,
+			JSON.stringify({
+				season: selectedSeason,
+				episode: selectedEpisode,
+				source: selectedSource
+			})
+		);
+	}
+
+	// Load progress from local storage
+	function loadProgressAndSelectedSource() {
+		const progress = localStorage.getItem(STORAGE_KEY);
+
+		if (progress) {
+			const { season, episode, source } = JSON.parse(progress);
+			selectedSeason = season;
+			selectedEpisode = episode;
+			selectedSource = source || 1;
+		}
+	}
+
+	// Initialize with the first season's episodes or loaded progress
 	onMount(() => {
-		fetchEpisodes(selectedSeason);
+		loadProgressAndSelectedSource(); // Load progress from local storage
+		fetchEpisodes(selectedSeason); // Fetch episodes for the selected season
 	});
 
 	// Derived iframe sources
@@ -55,15 +84,15 @@
 	});
 </script>
 
-<div class="flex flex-col min-h-screen text-white bg-black">
-	<!-- Sidebar -->
-	<div class="p-4 bg-black">
-		<h3 class="mb-4 text-xl font-bold text-white">Seasons</h3>
+<div class="flex flex-col min-h-screen text-white bg-black md:flex-row">
+	<!-- Sidebar - 1/4 width on md+ screens -->
+	<div class="p-4 bg-black md:w-1/4 lg:w-1/5 md:h-screen md:overflow-y-auto">
+		<h3 class="mb-4 text-lg font-bold text-white">Seasons</h3>
 		<div class="mb-4">
 			<select
 				bind:value={selectedSeason}
 				onchange={() => fetchEpisodes(selectedSeason)}
-				class="w-full p-3 text-white bg-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+				class="w-full p-2 text-white bg-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 			>
 				{#each seriesDetailData.seasons as season}
 					<option value={season.season_number}>
@@ -72,14 +101,14 @@
 				{/each}
 			</select>
 		</div>
-		<h3 class="mt-6 mb-2 text-xl font-semibold text-white">Episodes</h3>
-		<div class="overflow-y-auto h-[40vh]">
-			<ul class="space-y-2">
+		<h3 class="mt-4 mb-2 text-lg font-semibold text-white">Episodes</h3>
+		<div class="overflow-y-auto h-[40vh] md:h-auto">
+			<ul class="space-y-1">
 				{#each episodes as episode, index}
 					<li>
 						<button
 							onclick={() => selectEpisode(index + 1)}
-							class={'w-full px-4 py-3 text-left transition duration-200 rounded-md ' +
+							class={'w-full px-3 py-2 text-left text-sm transition duration-200 rounded-md ' +
 								(selectedEpisode === index + 1
 									? 'bg-white text-black'
 									: 'bg-gray-800 hover:bg-gray-700')}
@@ -92,28 +121,26 @@
 		</div>
 	</div>
 
-	<!-- Main Content -->
-	<div class="flex-1 p-4">
-		<h2 class="mb-4 text-2xl font-bold text-white">
+	<!-- Main Content - 3/4 width on md+ screens -->
+	<div class="flex-1 p-4 md:w-3/4 lg:w-4/5">
+		<h2 class="mb-4 text-xl font-bold text-white">
 			{seriesDetailData.original_name} (s{selectedSeason}ep{selectedEpisode})
 		</h2>
-
 		<!-- Video Player -->
-		<iframe
-			src={iframeSources[selectedSource]}
-			class="w-full h-[40vh] rounded-lg shadow-lg"
-			allowfullscreen
-			loading="lazy"
-			title="Movie Player"
-		></iframe>
-
-		<br />
-
+		<div class="relative w-full" style="padding-top: 56.25%">
+			<iframe
+				src={iframeSources[selectedSource]}
+				class="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg"
+				allowfullscreen
+				loading="lazy"
+				title="Movie Player"
+			></iframe>
+		</div>
 		<!-- Centered Buttons -->
 		<div class="flex flex-wrap justify-center gap-2 mt-4">
 			{#each iframeSources as source, index}
 				<button
-					class={'px-4 py-2 text-sm font-semibold rounded-md ' +
+					class={'px-3 py-2 text-sm font-semibold rounded-md ' +
 						(index === selectedSource ? 'bg-white text-black' : 'bg-gray-700 hover:bg-gray-600')}
 					onclick={() => changeSource(index)}
 				>

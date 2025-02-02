@@ -1,6 +1,12 @@
 <script>
+	import { Heart } from 'lucide-svelte';
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
+
+	let isAddedToHome = $state(false);
 	let { data } = $props();
+
 	let movie_data = data.movieData;
 	let movie_id = $page.params.movie_id;
 
@@ -8,8 +14,9 @@
 		`https://vidsrc.dev/embed/movie/${movie_id}`,
 		`https://vidsrc.icu/embed/movie/${movie_id}`,
 		`https://vidsrc.cc/v3/embed/movie/${movie_id}?autoPlay=true`,
-		`https://embed.su/embed/movie/${movie_id}?autoPlay=true`,
 		`https://vidsrc.to/embed/movie/${movie_id}`
+		// `https://embed.su/embed/movie/${movie_id}?autoPlay=true`,
+		// `https://multiembed.mov/directstream.php?video_id=${movie_id}`
 	]);
 
 	let selectedSource = $state(0);
@@ -17,6 +24,45 @@
 	function changeSource(index) {
 		selectedSource = index;
 	}
+
+	const STORAGE_KEY = `movies_${movie_id}_progress`;
+	const HOME_STORAGE_KEY = 'homepage_movies';
+
+	function checkIfMoviesInHome() {
+		const storedMovies = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
+		return storedMovies.some((movies) => movies.id === movie_data.id);
+	}
+
+	// Add/Remove series from homepage
+	function toggleHomeStatus() {
+		const storedMovies = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
+
+		if (isAddedToHome) {
+			// Remove series
+			const updatedSeries = storedMovies.filter((movies) => movies.id !== movie_data.id);
+			localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(updatedSeries));
+			isAddedToHome = false;
+			toast.success('Removed From The List');
+		} else {
+			// Add series
+			const moviesData = {
+				id: movie_data.id,
+				name: movie_data.original_name,
+				poster_path: movie_data.poster_path,
+				first_air_date: movie_data.first_air_date,
+				vote_average: movie_data.vote_average,
+				addedAt: new Date().toISOString()
+			};
+			storedMovies.push(moviesData);
+			localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedMovies));
+			isAddedToHome = true;
+			toast.success('Addedto the list');
+		}
+	}
+
+	onMount(() => {
+		isAddedToHome = checkIfMoviesInHome();
+	});
 </script>
 
 <div class="min-h-screen text-white bg-black">
@@ -61,7 +107,19 @@
 
 					<div class="flex-1">
 						<h1 class="text-3xl font-bold md:text-4xl">
-							{movie_data.original_title || movie_data.name}
+							<span class="flex gap-2 flex-rows">
+								{movie_data.title || movie_data.original_language}
+								<button
+									class="flex items-center gap-2 p-2 transition-colors duration-200 bg-black border border-black rounded-lg hover:bg-gray-800"
+									onclick={toggleHomeStatus}
+								>
+									<Heart
+										size={24}
+										color={isAddedToHome ? '#fb2c36' : 'white'}
+										fill={isAddedToHome ? '#fb2c36' : 'none'}
+									/>
+								</button>
+							</span>
 						</h1>
 						<p class="mt-2 text-gray-400">{movie_data.release_date}</p>
 						<p class="mt-2 text-gray-300">{movie_data.overview}</p>
@@ -90,6 +148,11 @@
 						<dt class="text-gray-400">Original Language</dt>
 						<dd>{movie_data.original_language}</dd>
 					</div>
+					<div>
+						<dt class="text-gray-400">Title</dt>
+						<dd>{movie_data.title}</dd>
+					</div>
+
 					<div>
 						<dt class="text-gray-400">Production Companies</dt>
 						<dd>

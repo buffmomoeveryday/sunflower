@@ -87,7 +87,7 @@
 
 					<div class="flex-1">
 						<h1 class="text-3xl font-bold md:text-4xl">
-							{bollyhood_movie_data.original_title || bollyhood_movie_data.name}
+							{bollyhood_movie_data.title || bollyhood_movie_data.title}
 						</h1>
 						<p class="mt-2 text-gray-400">{bollyhood_movie_data.release_date}</p>
 						<p class="mt-2 text-gray-300">{bollyhood_movie_data.overview}</p>
@@ -115,6 +115,10 @@
 					<div>
 						<dt class="text-gray-400">Original Language</dt>
 						<dd>{bollyhood_movie_data.original_language}</dd>
+					</div>
+					<div>
+						<dt class="text-gray-400">Title</dt>
+						<dd>{bollyhood_movie_data.title}</dd>
 					</div>
 					<div>
 						<dt class="text-gray-400">Production Companies</dt>

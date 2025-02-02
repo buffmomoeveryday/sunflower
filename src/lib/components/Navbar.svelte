@@ -5,7 +5,6 @@
 	const navItems = $state([
 		{ name: 'Home', path: '/' },
 		{ name: 'Series', path: '/watch/series' },
-		// { name: 'Anime', path: '/watch/anime' },
 		{ name: 'Bollyhood', path: '/watch/bollyhood' },
 		{ name: 'Search', path: '/watch/search' }
 	]);

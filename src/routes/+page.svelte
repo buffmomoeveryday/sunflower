@@ -1,4 +1,5 @@
 <script>
+	import { error } from '@sveltejs/kit';
 	import MovieCard from '$lib/components/MovieCard.svelte';
 	import SeriesCard from '$lib/components/SeriesCard.svelte';
 	import Navbar from '$lib/components/Navbar.svelte';
@@ -8,21 +9,34 @@
 	let { data } = $props();
 	let popularMovies = data.popularMoviesData;
 	let newReleases = data.newReleasesData;
-	let myWatchlist = $state([]);
+	let mySeriesWatchlist = $state([]);
+	let myMoiveWatchlist = $state([]);
 
-	// Function to load watchlist from localStorage
-	function loadWatchlist() {
+	function loadSeriesWatchlist() {
 		try {
 			const storedSeries = JSON.parse(localStorage.getItem('homepage_series') || '[]');
-			myWatchlist = storedSeries.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
+			mySeriesWatchlist = storedSeries.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
 		} catch (error) {
 			console.error('Error loading watchlist:', error);
-			myWatchlist = [];
+			mySeriesWatchlist = [];
+		}
+	}
+
+	function loadMovieWatchlist() {
+		try {
+			const storedMovies = JSON.parse(localStorage.getItem('homepage_movies') || '[]');
+			myMoiveWatchlist = storedMovies.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
+			console.log('called');
+			$inspect(myMoiveWatchlist);
+		} catch (error) {
+			console.log('Error Loading Movie Watchlist', error);
+			myMoiveWatchlist = [];
 		}
 	}
 
 	onMount(() => {
-		loadWatchlist();
+		loadSeriesWatchlist();
+		loadMovieWatchlist();
 	});
 </script>
 
@@ -64,16 +78,16 @@
 	</div>
 
 	<!-- My Watchlist Section -->
-	{#if myWatchlist.length > 0}
+	{#if mySeriesWatchlist.length > 0}
 		<section class="container p-4 mx-auto mt-6 rounded-lg">
 			<div class="flex items-center justify-between">
-				<h2 class="text-xl font-bold md:text-2xl">My Watchlist</h2>
-				<span class="text-sm text-gray-400">{myWatchlist.length} items</span>
+				<h2 class="text-xl font-bold md:text-2xl">My Series Watchlist</h2>
+				<span class="text-sm text-gray-400">{mySeriesWatchlist.length} items</span>
 			</div>
 			<div
 				class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
 			>
-				{#each myWatchlist as series}
+				{#each mySeriesWatchlist as series}
 					<SeriesCard
 						id={series.id}
 						title={series.name}
@@ -83,6 +97,23 @@
 						vote_average={series.vote_average}
 						media_type="tv"
 					/>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	<!-- My Watchlist Section -->
+	{#if myMoiveWatchlist.length > 0}
+		<section class="container p-4 mx-auto mt-6 rounded-lg">
+			<div class="flex items-center justify-between">
+				<h2 class="text-xl font-bold md:text-2xl">My Movies Watchlist</h2>
+				<span class="text-sm text-gray-400">{myMoiveWatchlist.length} items</span>
+			</div>
+			<div
+				class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+			>
+				{#each myMoiveWatchlist as series}
+					<MovieCard {...series} />
 				{/each}
 			</div>
 		</section>

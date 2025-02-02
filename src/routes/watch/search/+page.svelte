@@ -1,6 +1,7 @@
 <script>
 	import MovieCard from '$lib/components/MovieCard.svelte';
 	import SeriesCard from '$lib/components/SeriesCard.svelte';
+	import { MoveLeft, MoveRight } from 'lucide-svelte';
 
 	let search = $state('');
 	let loading = $state(false);
@@ -94,6 +95,26 @@
 					</span>
 				</button>
 			</form>
+		</div>
+		<div class="pb-3">
+			<!-- Pagination -->
+			{#if totalPages > 1}
+				<div class="flex items-center justify-center mt-8 space-x-4">
+					<MoveLeft
+						class="w-6 h-6 text-white cursor-pointer hover:text-gray-400 disabled:cursor-not-allowed"
+						onclick={() => changePage(currentPage - 1)}
+						disabled={currentPage === 1}
+					/>
+					<span class="px-4 py-2 text-white rounded-lg">
+						Page {currentPage} of {totalPages}
+					</span>
+					<MoveRight
+						class="w-6 h-6 text-white cursor-pointer hover:text-gray-400 disabled:cursor-not-allowed"
+						onclick={() => changePage(currentPage + 1)}
+						disabled={currentPage === totalPages}
+					/>
+				</div>
+			{/if}
 		</div>
 
 		{#if errorMessage}

@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { fetchWithCache,API_KEY } from '$lib/utils.js';
+import { fetchWithCache, API_KEY } from '$lib/utils.js';
 
 const BASE_URL = "https://api.themoviedb.org/3/movie"
 const BASE_URL_SEARCH = "https://api.themoviedb.org/3"
@@ -8,11 +8,14 @@ const BASE_URL_SEARCH = "https://api.themoviedb.org/3"
 
 export async function load({ params }) {
     let movie_id = params.movie_id;
-    let url = `${BASE_URL}/${movie_id}?language=en-US&api_key=${API_KEY}`
+    let url = `${BASE_URL}/${movie_id}?language=en-US&api_key=${API_KEY}&append_to_response=videos`
     let movieData = await fetchWithCache(url, movie_id)
+
+    console.log(movieData)
+
     return {
         "movie_id": movie_id,
-        "movieData": movieData
+        "movieData": movieData,
     }
 }
 

@@ -21,7 +21,7 @@ export async function POST(event) {
             `search=${encodeURIComponent(search)}&page=${page}&type=${videoType}`
         );
 
-        console.log(url)
+        // console.log(url)
 
         return json({
             success: true,

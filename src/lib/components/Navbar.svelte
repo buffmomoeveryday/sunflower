@@ -3,7 +3,7 @@
 	import { ProgressBar } from '@prgm/sveltekit-progress-bar';
 
 	const navItems = $state([
-		{ name: 'Movies', path: '/' },
+		{ name: 'Home', path: '/' },
 		{ name: 'Series', path: '/watch/series' },
 		// { name: 'Anime', path: '/watch/anime' },
 		{ name: 'Bollyhood', path: '/watch/bollyhood' },

@@ -4,9 +4,9 @@ import PocketBase from 'pocketbase';
 
 
 export async function POST({ request, cookies }) {
-    const pb = new PocketBase(POCKETBASE_URL);
 
     try {
+        const pb = new PocketBase(POCKETBASE_URL);
         const { user_id, tmdb_id } = await request.json();
         const userIdString = user_id.toString();
         const resultList = await pb.collection('favourite_movies').getList(1, 50, {

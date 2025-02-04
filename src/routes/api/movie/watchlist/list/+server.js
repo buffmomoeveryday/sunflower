@@ -4,9 +4,9 @@ import { POCKETBASE_URL } from '$lib/utils.js';
 
 
 export async function POST({ request, cookies }) {
-    const pb = new PocketBase(POCKETBASE_URL);
 
     try {
+        const pb = new PocketBase(POCKETBASE_URL);
         const { user_id } = await request.json();
         const resultList = await pb.collection('favourite_movies').getList(1, 50, {
             filter: `user_id="${user_id}"`,

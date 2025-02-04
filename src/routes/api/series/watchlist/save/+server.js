@@ -5,12 +5,13 @@ import PocketBase from 'pocketbase';
 
 
 export async function POST({ request, cookies }) {
-    const pb = new PocketBase(POCKETBASE_URL);
     const { user_id, tmdb_id, season_id, episode_id, title, poster_path, average_ratings } = await request.json();
 
     try {
+
         let existingRecord;
         try {
+            const pb = new PocketBase(POCKETBASE_URL);
             existingRecord = await pb.collection('favourite_series').getFirstListItem(
                 `user_id = "${user_id}" && tmdb_id = "${tmdb_id}" && season_id = "${season_id}"`
             );
@@ -29,6 +30,7 @@ export async function POST({ request, cookies }) {
 
         if (existingRecord) {
             try {
+                const pb = new PocketBase(POCKETBASE_URL);
                 const updatedRecord = await pb.collection('favourite_series').update(existingRecord.id, data);
                 return json({ "id": updatedRecord.id }, { status: 200 });
             } catch (error) {
@@ -37,6 +39,7 @@ export async function POST({ request, cookies }) {
             }
         } else {
             try {
+                const pb = new PocketBase(POCKETBASE_URL);
                 const record = await pb.collection('favourite_series').create(data);
                 return json({ "id": record.id }, { status: 201 });
             } catch (error) {
@@ -50,9 +53,9 @@ export async function POST({ request, cookies }) {
 
 
 export async function DELETE({ request }) {
-    const pb = new PocketBase(POCKETBASE_URL);
     const { id, user_id } = await request.json();
     try {
+        const pb = new PocketBase(POCKETBASE_URL);
         const series = await pb.collection("favourite_series").getFirstListItem(
             `tmdb_id="${id}" && user_id="${user_id}"`
         );
@@ -68,8 +71,8 @@ export async function DELETE({ request }) {
 }
 
 export async function PATCH({ request }) {
-    const pb = new PocketBase(POCKETBASE_URL);
     try {
+        const pb = new PocketBase(POCKETBASE_URL);
         const requestData = await request.json();
         if (!requestData.user_id || !requestData.tmdb_id || !requestData.season_id || !requestData.episode_id) {
             return json({ success: false, error: 'Missing required fields' }, { status: 400 });

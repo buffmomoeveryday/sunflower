@@ -6,9 +6,9 @@ import PocketBase from 'pocketbase';
 
 export async function POST({ request, cookies }) {
     const { user_id, tmdb_id, title, poster_path, average_ratings } = await request.json();
-    const pb = new PocketBase(POCKETBASE_URL);
 
     try {
+        const pb = new PocketBase(POCKETBASE_URL);
         let existingRecord;
         try {
             existingRecord = await pb.collection('favourite_movies').getFirstListItem(
@@ -19,6 +19,7 @@ export async function POST({ request, cookies }) {
 
         if (existingRecord) {
             try {
+                const pb = new PocketBase(POCKETBASE_URL);
                 await pb.collection('favourite_movies').delete(existingRecord.id);
                 return json({ success: true, action: 'removed' }, { status: 200 });
             } catch (error) {
@@ -35,6 +36,8 @@ export async function POST({ request, cookies }) {
             };
 
             try {
+                const pb = new PocketBase(POCKETBASE_URL);
+
                 const record = await pb.collection('favourite_movies').create(data);
                 return json({ success: true, action: 'added', id: record.id }, { status: 201 });
             } catch (error) {

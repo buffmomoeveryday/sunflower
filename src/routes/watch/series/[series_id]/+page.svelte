@@ -32,9 +32,6 @@
 		if (!isAddedToHome) return;
 		if (!user) return;
 
-		console.log(seriesDetailData);
-		console.log(seriesDetailData.title);
-
 		try {
 			const response = await fetch('/api/series/watchlist/save', {
 				method: 'PATCH',
@@ -65,7 +62,6 @@
 		// if (!isAddedToHome) return;
 		try {
 			if (action === 'add') {
-				console.log('add called');
 				const response = await fetch('/api/series/watchlist/save', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -87,7 +83,7 @@
 					throw new Error(result.message || 'Failed to add to watchlist');
 				}
 			} else if (action === 'remove') {
-				console.log('removed called');
+				('removed called');
 				const response = await fetch('/api/series/watchlist/save', {
 					method: 'DELETE',
 					headers: { 'Content-Type': 'application/json' },
@@ -141,10 +137,8 @@
 			localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(updatedSeries));
 			isAddedToHome = false;
 			if (data.user.id) {
-				console.log('has user id');
 				await callWatchlistAPI('remove');
 			} else {
-				console.log('hi');
 			}
 		} else {
 			const seriesData = {
@@ -176,7 +170,6 @@
 			let result = await response.json();
 			episodes = result.episodes;
 			await updateProgressInDatabase();
-			console.log('called');
 		} catch (error) {
 			console.error('Error fetching episodes:', error);
 		}

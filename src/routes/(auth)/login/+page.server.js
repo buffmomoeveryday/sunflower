@@ -39,12 +39,12 @@ export const actions = {
             return fail(500, { fail: true, message: errorObj.data.message });
         }
 
-        throw redirect(303, '/');
+        throw redirect(303, '/watch/series');
     },
 
     logout: async ({ locals, request }) => {
         locals.pb.authStore.clear();
-        throw redirect(303, '/')
+        throw redirect(303, '/watch/series')
     }
 
 }

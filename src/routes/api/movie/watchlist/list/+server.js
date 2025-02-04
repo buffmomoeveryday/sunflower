@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import PocketBase from 'pocketbase';
+import { POCKETBASE_URL } from '$lib/utils.js';
 
-const url = 'http://localhost:8090';
-const pb = new PocketBase(url);
+const pb = new PocketBase(POCKETBASE_URL);
 
 export async function POST({ request, cookies }) {
 

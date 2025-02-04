@@ -2,10 +2,9 @@
 	import Navbar from '$lib/components/Navbar.svelte';
 	import '../app.css';
 	import { Toaster } from 'svelte-sonner';
-
-	let { children } = $props();
+	let { children,data } = $props();
 </script>
 
-<Navbar />
+<Navbar user = {data.user} />
 <Toaster richColors />
 {@render children()}

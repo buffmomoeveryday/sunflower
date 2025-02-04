@@ -23,7 +23,6 @@
 
 	// 	if (event.data && event.data.type === 'PLAYER_EVENT') {
 	// 		const { event: eventType, currentTime, duration } = event.data.data;
-	// 		console.log(`Player ${eventType} at ${currentTime}s of ${duration}s`);
 	// 	}
 	// });
 

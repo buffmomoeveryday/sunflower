@@ -20,7 +20,6 @@ export async function POST(event) {
         return json({ success: true, searchResults: serachResults })
 
     } catch (error) {
-        console.log(error)
         return json({ success: false, error: error })
     }
 

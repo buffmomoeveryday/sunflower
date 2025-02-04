@@ -11,8 +11,6 @@ export async function load({ params }) {
     let url = `${BASE_URL}/${movie_id}?language=en-US&api_key=${API_KEY}&append_to_response=videos`
     let movieData = await fetchWithCache(url, movie_id)
 
-    console.log(movieData)
-
     return {
         "movie_id": movie_id,
         "movieData": movieData,

@@ -32,7 +32,6 @@
 	// Update the selected episode
 	function selectEpisode(episodeId) {
 		selectedEpisode = episodeId;
-		console.log('Selected Episode ID:', selectedEpisode);
 	}
 
 	// Initialize with the first season's episodes
@@ -54,9 +53,7 @@
 		selectedSource = index;
 	}
 
-	$effect(() => {
-		console.log(selectedSource, iframeSources[selectedSource]);
-	});
+	$effect(() => {});
 </script>
 
 <div class="min-h-screen p-4 text-white bg-black">

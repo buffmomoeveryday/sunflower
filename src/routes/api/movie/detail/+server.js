@@ -11,7 +11,6 @@ export async function GET(event) {
         });
 
     } catch (error) {
-        console.log(error);
         return json({ success: false, error: "Failed to fetch search results" });
     }
 }

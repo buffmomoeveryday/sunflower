@@ -9,7 +9,8 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"format": "prettier --write .",
-		"lint": "prettier --check ."
+		"lint": "prettier --check .",
+		"start": "vite build"
 	},
 	"devDependencies": {
 		"@prgm/sveltekit-progress-bar": "^3.0.1",

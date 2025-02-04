@@ -12,6 +12,7 @@
 		{/if}
 
 		<form action="?/login" method="post">
+			<h1 class="pb-5 text-xl font-bold">Login</h1>
 			<label class="block mb-4">
 				<span class="block text-sm font-medium text-gray-300">E-Mail</span>
 				<input
@@ -32,23 +33,12 @@
 					placeholder="Your password"
 				/>
 			</label>
-			<div class="flex items-center justify-between mb-6">
-				<button class="text-sm text-blue-400 hover:underline" formnovalidate formaction="?/reset">
-					Reset Password
-				</button>
-			</div>
+
 			<button
-				class="w-full px-4 py-2 font-semibold text-white bg-blue-500 rounded-lg shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75"
+				class="w-full px-4 py-2 font-semibold text-black bg-white rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-75"
 				type="submit"
 			>
 				Login
-			</button>
-			<button
-				class="w-full px-4 py-2 mt-4 font-semibold text-white bg-gray-700 rounded-lg shadow-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75"
-				type="button"
-				formaction="?/register"
-			>
-				Register
 			</button>
 		</form>
 	</div>

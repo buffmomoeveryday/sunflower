@@ -2,10 +2,10 @@ import { error, json } from '@sveltejs/kit';
 import { fetchWithCache, API_KEY, POCKETBASE_URL } from '$lib/utils.js';
 import PocketBase from 'pocketbase';
 
-const pb = new PocketBase(POCKETBASE_URL);
 
 
 export async function POST({ request, cookies }) {
+    const pb = new PocketBase(POCKETBASE_URL);
     const { user_id, tmdb_id, season_id, episode_id, title, poster_path, average_ratings } = await request.json();
 
     try {
@@ -50,6 +50,7 @@ export async function POST({ request, cookies }) {
 
 
 export async function DELETE({ request }) {
+    const pb = new PocketBase(POCKETBASE_URL);
     const { id, user_id } = await request.json();
     try {
         const series = await pb.collection("favourite_series").getFirstListItem(
@@ -67,6 +68,7 @@ export async function DELETE({ request }) {
 }
 
 export async function PATCH({ request }) {
+    const pb = new PocketBase(POCKETBASE_URL);
     try {
         const requestData = await request.json();
         if (!requestData.user_id || !requestData.tmdb_id || !requestData.season_id || !requestData.episode_id) {

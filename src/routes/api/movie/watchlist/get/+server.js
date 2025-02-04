@@ -2,9 +2,10 @@ import { json } from '@sveltejs/kit';
 import { fetchWithCache, API_KEY, POCKETBASE_URL } from '$lib/utils.js';
 import PocketBase from 'pocketbase';
 
-const pb = new PocketBase(POCKETBASE_URL);
 
 export async function POST({ request, cookies }) {
+    const pb = new PocketBase(POCKETBASE_URL);
+
     try {
         const { user_id, tmdb_id } = await request.json();
         const userIdString = user_id.toString();

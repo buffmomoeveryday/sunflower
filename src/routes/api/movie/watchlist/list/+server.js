@@ -2,9 +2,9 @@ import { json } from '@sveltejs/kit';
 import PocketBase from 'pocketbase';
 import { POCKETBASE_URL } from '$lib/utils.js';
 
-const pb = new PocketBase(POCKETBASE_URL);
 
 export async function POST({ request, cookies }) {
+    const pb = new PocketBase(POCKETBASE_URL);
 
     try {
         const { user_id } = await request.json();

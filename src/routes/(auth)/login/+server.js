@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { PUBLIC_REDIRECT_URI } from '$env/static/public';
+// import { PUBLIC_REDIRECT_URI } from '$env/static/public';
 
 export const GET = async ({ url, cookies, locals }) => {
     // redirect if no provider is provided
@@ -12,7 +12,8 @@ export const GET = async ({ url, cookies, locals }) => {
     // redirect if provider is not available
     if (!provider) throw redirect(300, '/');
 
-    const authUrl = provider.authUrl + PUBLIC_REDIRECT_URI;
+    const authUrl = provider.authUrl
+    // const authUrl = provider.authUrl + PUBLIC_REDIRECT_URI;
 
     cookies.set(
         'provider',

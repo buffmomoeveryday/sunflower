@@ -7,6 +7,7 @@
 	let isAddedToHome = $state(false);
 	let { data } = $props();
 
+	let user = data.user;
 	let movie_data = data.movieData;
 	let movie_id = $page.params.movie_id;
 
@@ -15,8 +16,6 @@
 		`https://vidsrc.icu/embed/movie/${movie_id}`,
 		`https://vidsrc.cc/v3/embed/movie/${movie_id}?autoPlay=true`,
 		`https://vidsrc.to/embed/movie/${movie_id}`
-		// `https://embed.su/embed/movie/${movie_id}?autoPlay=true`,
-		// `https://multiembed.mov/directstream.php?video_id=${movie_id}`
 	]);
 
 	let selectedSource = $state(0);
@@ -25,43 +24,90 @@
 		selectedSource = index;
 	}
 
-	const STORAGE_KEY = `movies_${movie_id}_progress`;
 	const HOME_STORAGE_KEY = 'homepage_movies';
 
-	function checkIfMoviesInHome() {
-		const storedMovies = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
-		return storedMovies.some((movies) => movies.id === movie_data.id);
+	async function fetchMovieWatchlistStatus() {
+		try {
+			const response = await fetch(`/api/movie/watchlist/get`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					user_id: user.id, // User ID
+					tmdb_id: movie_id // TMDB ID
+				})
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch movie watchlist status: ${response.statusText}`);
+			}
+
+			const data = await response.json();
+			if (data) isAddedToHome = true;
+		} catch (error) {
+			console.error('Error fetching movie watchlist status:', error);
+			toast.error('Failed to check watchlist status.');
+			isAddedToHome = false;
+		}
 	}
 
-	// Add/Remove series from homepage
-	function toggleHomeStatus() {
-		const storedMovies = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
-
-		if (isAddedToHome) {
-			// Remove series
-			const updatedSeries = storedMovies.filter((movies) => movies.id !== movie_data.id);
-			localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(updatedSeries));
-			isAddedToHome = false;
-			toast.success('Removed From The List');
-		} else {
-			// Add series
-			const moviesData = {
-				id: movie_data.id,
-				name: movie_data.original_name,
+	async function toggleHomeStatus() {
+		try {
+			const postData = {
+				user_id: user.id,
+				tmdb_id: movie_data.id,
+				title: movie_data.title,
 				poster_path: movie_data.poster_path,
-				first_air_date: movie_data.first_air_date,
-				vote_average: movie_data.vote_average,
-				addedAt: new Date().toISOString()
+				average_ratings: movie_data.vote_average
 			};
-			storedMovies.push(moviesData);
-			localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedMovies));
-			isAddedToHome = true;
-			toast.success('Addedto the list');
+
+			const response = await fetch('/api/movie/watchlist/save', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(postData)
+			});
+
+			if (!response.ok) {
+				const { error } = await response.json();
+				throw new Error(error || 'Failed to update watchlist');
+			}
+
+			const result = await response.json();
+
+			if (result.action === 'added') {
+				// Add to local storage
+				const storedMovies = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
+				const moviesData = {
+					id: movie_data.id,
+					name: movie_data.original_name,
+					poster_path: movie_data.poster_path,
+					first_air_date: movie_data.first_air_date,
+					vote_average: movie_data.vote_average,
+					addedAt: new Date().toISOString()
+				};
+				storedMovies.push(moviesData);
+				localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedMovies));
+				toast.success('Added to the list');
+				isAddedToHome = true;
+			} else if (result.action === 'removed') {
+				// Remove from local storage
+				isAddedToHome = false;
+				const storedMovies = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
+				const updatedMovies = storedMovies.filter((movie) => movie.id !== movie_data.id);
+				localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(updatedMovies));
+				toast.success('Removed from the list');
+			}
+		} catch (error) {
+			console.error(error);
+			toast.error('Something went wrong');
 		}
 	}
 
 	onMount(() => {
-		isAddedToHome = checkIfMoviesInHome();
+		fetchMovieWatchlistStatus();
 	});
 </script>
 

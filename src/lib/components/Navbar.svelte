@@ -1,6 +1,10 @@
 <script>
+	import { LogOut } from 'lucide-svelte';
 	import { page } from '$app/stores';
 	import { ProgressBar } from '@prgm/sveltekit-progress-bar';
+	import { enhance } from '$app/forms';
+
+	const props = $props();
 
 	const navItems = $state([
 		{ name: 'Home', path: '/' },
@@ -12,6 +16,8 @@
 	function isActive(path) {
 		return $page.url.pathname.startsWith(path);
 	}
+
+	const user = props.user;
 </script>
 
 <nav class="p-4 bg-black">
@@ -27,6 +33,18 @@
 				</a>
 			</li>
 		{/each}
+		<li>
+			{#if user}
+				<form method="POST" action="/logout" class="flex gap-2 flex-cols">
+					<div class="text-white">
+						{user.email}
+					</div>
+					<button class="p-3 text-white bg-red-600 rounded">Log out</button>
+				</form>
+			{:else}
+				<a href="/login" class="p-3 text-white bg-green-600 rounded">Login</a>
+			{/if}
+		</li>
 	</ul>
 </nav>
 <ProgressBar class="text-green-500" />

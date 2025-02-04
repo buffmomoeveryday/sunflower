@@ -27,7 +27,6 @@
 			<h3 class="text-base font-medium text-center line-clamp-2 sm:text-lg">
 				{title}
 			</h3>
-			<!-- Additional movie info in footer -->
 			<div class="flex items-center justify-center mt-2 text-sm text-gray-400">
 				<div class="flex items-center gap-2">
 					<span class="flex items-center gap-1">

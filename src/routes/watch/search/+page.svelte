@@ -2,6 +2,7 @@
 	import MovieCard from '$lib/components/MovieCard.svelte';
 	import SeriesCard from '$lib/components/SeriesCard.svelte';
 	import { MoveLeft, MoveRight } from 'lucide-svelte';
+	import { onMount } from 'svelte';
 
 	let search = $state('');
 	let loading = $state(false);
@@ -11,17 +12,17 @@
 	let totalPages = $state(1);
 	let videoType = $state('movie');
 	let bollywood = $state(false);
+	let previousSearches = $state([]);
 
 	const searchMovie = async (event, page = 1) => {
 		event?.preventDefault();
 		loading = true;
 
 		const formData = new FormData();
-
 		formData.append('search', search);
 		formData.append('page', page);
 		formData.append('videoType', videoType);
-		formData.append('bollywood', bollywood | null);
+		formData.append('bollywood', bollywood || null);
 
 		try {
 			const response = await fetch('/api/movie', {
@@ -36,6 +37,16 @@
 				movieResults = json.searchResults;
 				totalPages = json.total_pages;
 				currentPage = json.current_page;
+
+				// Save the search query and video type to previous searches
+				const searchEntry = { query: search, type: videoType };
+				if (!previousSearches.some((entry) => entry.query === search && entry.type === videoType)) {
+					previousSearches = [searchEntry, ...previousSearches];
+					if (previousSearches.length > 5) {
+						previousSearches.pop();
+					}
+					localStorage.setItem('previousSearches', JSON.stringify(previousSearches));
+				}
 			} else {
 				errorMessage = json.error;
 			}
@@ -52,6 +63,16 @@
 			searchMovie(null, newPage);
 		}
 	};
+
+	const performPreviousSearch = (query, type) => {
+		search = query;
+		videoType = type;
+		searchMovie(null, 1);
+	};
+
+	onMount(() => {
+		previousSearches = JSON.parse(localStorage.getItem('previousSearches')) || [];
+	});
 </script>
 
 <div class="min-h-screen p-4 bg-black">
@@ -96,6 +117,26 @@
 				</button>
 			</form>
 		</div>
+
+		<!-- Previous Searches -->
+		{#if previousSearches.length > 0}
+			<div class="mb-8">
+				<h2 class="mb-2 text-lg text-white">Previous Searches</h2>
+				<ul class="flex flex-wrap gap-2">
+					{#each previousSearches as { query, type }}
+						<li>
+							<button
+								onclick={() => performPreviousSearch(query, type)}
+								class="px-3 py-2 text-white bg-gray-700 rounded-lg hover:bg-gray-600"
+							>
+								{query} ({type === 'movie' ? 'Movie' : 'Series'})
+							</button>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		{/if}
+
 		<div class="pb-3">
 			<!-- Pagination -->
 			{#if totalPages > 1}

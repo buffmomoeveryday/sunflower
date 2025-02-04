@@ -13,44 +13,156 @@
 	let selectedEpisode = $state(1);
 	let isAddedToHome = $state(false);
 
+	let user = data?.user;
+
+	// Derived State
+	let iframeSources = $derived([
+		`https://vidsrc.cc/v3/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
+		`https://vidsrc.icu/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
+		`https://vidsrc.dev/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
+		`https://embed.su/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`
+	]);
+
 	// Local storage keys
 	const STORAGE_KEY = `series_${seriesDetailData.id}_progress`;
 	const HOME_STORAGE_KEY = 'homepage_series';
+	const SERIES_ADDED_KEY = `series_${seriesDetailData.id}_added`;
 
-	// Check if series is already in homepage
+	async function updateProgressInDatabase() {
+		if (!isAddedToHome) return;
+		if (!user) return;
+
+		console.log(seriesDetailData);
+		console.log(seriesDetailData.title);
+
+		try {
+			const response = await fetch('/api/series/watchlist/save', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+
+				body: JSON.stringify({
+					user_id: data.user.id,
+					tmdb_id: seriesDetailData.id,
+					season_id: selectedSeason,
+					episode_id: selectedEpisode,
+					title: seriesDetailData.name,
+					poster_path: seriesDetailData.poster_path,
+					average_ratings: seriesDetailData.vote_average
+				})
+			});
+
+			if (!response.ok) {
+				const result = await response.json();
+				throw new Error(result.message || 'Failed to update progress');
+			}
+		} catch (error) {
+			console.error('Error updating progress:', error);
+			toast.error('Failed to save progress');
+		}
+	}
+	async function callWatchlistAPI(action) {
+		if (!user) return;
+		// if (!isAddedToHome) return;
+		try {
+			if (action === 'add') {
+				console.log('add called');
+				const response = await fetch('/api/series/watchlist/save', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						user_id: data.user.id,
+						tmdb_id: seriesDetailData.id,
+						season_id: selectedSeason,
+						episode_id: selectedEpisode,
+						title: seriesDetailData.name,
+						poster_path: seriesDetailData.poster_path,
+						average_ratings: seriesDetailData.vote_average
+					})
+				});
+
+				const result = await response.json();
+				if (response.ok) {
+					toast.success('Added to watchlist');
+				} else {
+					throw new Error(result.message || 'Failed to add to watchlist');
+				}
+			} else if (action === 'remove') {
+				console.log('removed called');
+				const response = await fetch('/api/series/watchlist/save', {
+					method: 'DELETE',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ id: seriesDetailData.id, user_id: user.id })
+				});
+				if (response.ok) {
+					toast.success('Removed from watchlist');
+				} else {
+					const result = await response.json();
+					throw new Error(result.message || 'Failed to remove from watchlist');
+				}
+			}
+		} catch (error) {
+			console.error('Error calling watchlist API:', error);
+			toast.error('An error occurred');
+		}
+	}
+
 	function checkIfSeriesInHome() {
 		const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
 		return storedSeries.some((series) => series.id === seriesDetailData.id);
 	}
 
-	// Add/Remove series from homepage
-	function toggleHomeStatus() {
-		const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
+	function storeSeriesDataOnceWithDelay() {
+		const isSeriesAlreadyAdded = localStorage.getItem(SERIES_ADDED_KEY);
+		if (!isSeriesAlreadyAdded) {
+			setTimeout(async () => {
+				const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
+				const seriesData = {
+					id: seriesDetailData.id,
+					name: seriesDetailData.original_name,
+					poster_path: seriesDetailData.poster_path,
+					first_air_date: seriesDetailData.first_air_date,
+					vote_average: seriesDetailData.vote_average,
+					addedAt: new Date().toISOString(),
+					user_id: user.id
+				};
+				storedSeries.push(seriesData);
+				localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedSeries));
+				localStorage.setItem(SERIES_ADDED_KEY, 'true');
+				isAddedToHome = true;
+				if (data.user.id) await callWatchlistAPI('add');
+			}, 4000); // Wait for the delay before enabling the button
+		}
+	}
 
+	async function toggleHomeStatus() {
+		const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
 		if (isAddedToHome) {
-			// Remove series
 			const updatedSeries = storedSeries.filter((series) => series.id !== seriesDetailData.id);
 			localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(updatedSeries));
 			isAddedToHome = false;
-			toast.success('Removed From The List');
+			if (data.user.id) {
+				console.log('has user id');
+				await callWatchlistAPI('remove');
+			} else {
+				console.log('hi');
+			}
 		} else {
-			// Add series
 			const seriesData = {
 				id: seriesDetailData.id,
 				name: seriesDetailData.original_name,
 				poster_path: seriesDetailData.poster_path,
 				first_air_date: seriesDetailData.first_air_date,
 				vote_average: seriesDetailData.vote_average,
-				addedAt: new Date().toISOString()
+				addedAt: new Date().toISOString(),
+				user_id: user.id
 			};
 			storedSeries.push(seriesData);
 			localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedSeries));
 			isAddedToHome = true;
-			toast.success('Addedto the list');
+			if (data.user.id) await callWatchlistAPI('add');
 		}
 	}
 
-	// Fetch episodes for the selected season
 	async function fetchEpisodes(seasonNumber) {
 		selectedSeason = seasonNumber;
 		try {
@@ -63,19 +175,19 @@
 			});
 			let result = await response.json();
 			episodes = result.episodes;
+			await updateProgressInDatabase();
+			console.log('called');
 		} catch (error) {
 			console.error('Error fetching episodes:', error);
 		}
 	}
 
-	// Update the selected episode and save to local storage
-	function selectEpisode(episodeId) {
+	async function selectEpisode(episodeId) {
 		selectedEpisode = episodeId;
 		saveProgressAndSelectedSource();
-		console.log('Selected Episode ID:', selectedEpisode);
+		await updateProgressInDatabase();
 	}
 
-	// Save progress to local storage
 	function saveProgressAndSelectedSource() {
 		localStorage.setItem(
 			STORAGE_KEY,
@@ -87,7 +199,6 @@
 		);
 	}
 
-	// Load progress from local storage
 	function loadProgressAndSelectedSource() {
 		const progress = localStorage.getItem(STORAGE_KEY);
 
@@ -99,40 +210,64 @@
 		}
 	}
 
-	// Initialize with the first season's episodes or loaded progress
-	onMount(() => {
-		loadProgressAndSelectedSource(); // Load progress from local storage
-		fetchEpisodes(selectedSeason); // Fetch episodes for the selected season
-		isAddedToHome = checkIfSeriesInHome(); // Check if series is in homepage
-	});
-
-	// Derived iframe sources
-	let iframeSources = $derived([
-		`https://vidsrc.cc/v3/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
-		`https://vidsrc.icu/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
-		`https://vidsrc.dev/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
-		`https://embed.su/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`
-	]);
-
 	function changeSource(index) {
 		selectedSource = index;
+		saveProgressAndSelectedSource();
 	}
+
+	async function getProgress() {
+		if (user) {
+			try {
+				let response = await fetch('/api/series/watchlist/get', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						user_id: data.user.id,
+						tmdb_id: seriesDetailData.id
+					})
+				});
+
+				if (response.ok) {
+					isAddedToHome = true;
+					let result = await response.json();
+					if (result.records) {
+						selectedSeason = result.records.season_id;
+						selectedEpisode = result.records.episode_id;
+						isAddedToHome != isAddedToHome;
+					}
+				}
+			} catch (error) {
+				console.error('Error fetching watchlist data:', error);
+			}
+		}
+	}
+
+	onMount(async () => {
+		storeSeriesDataOnceWithDelay();
+		await getProgress();
+		loadProgressAndSelectedSource();
+		await fetchEpisodes(selectedSeason);
+		isAddedToHome = checkIfSeriesInHome();
+	});
 </script>
 
 <div class="flex flex-col min-h-screen text-white bg-black md:flex-row">
 	<!-- Sidebar - 1/4 width on md+ screens -->
 	<div class="p-4 bg-black md:w-1/4 lg:w-1/5 md:h-screen md:overflow-y-auto">
-		<button
-			class="flex items-center gap-2 p-2 transition-colors duration-200 bg-black border border-gray-700 rounded-lg hover:bg-gray-800"
-			onclick={toggleHomeStatus}
-		>
-			<Heart
-				size={24}
-				color={isAddedToHome ? '#fb2c36' : 'white'}
-				fill={isAddedToHome ? '#fb2c36' : 'none'}
-			/>
-			<span>{isAddedToHome ? 'Added to Home' : 'Add to Home'}</span>
-		</button>
+		{#if user}
+			<button
+				class="flex items-center gap-2 p-2 transition-colors duration-200 bg-black border border-gray-700 rounded-lg hover:bg-gray-800"
+				onclick={toggleHomeStatus}
+			>
+				<Heart
+					size={24}
+					color={isAddedToHome ? '#fb2c36' : 'white'}
+					fill={isAddedToHome ? '#fb2c36' : 'none'}
+				/>
+				<span>{isAddedToHome ? 'Added to Home' : 'Add to Home'}</span>
+			</button>
+		{/if}
+
 		<h3 class="mb-4 text-lg font-bold text-white">Seasons</h3>
 		<div class="mb-4">
 			<select
@@ -167,12 +302,11 @@
 		</div>
 	</div>
 
-	<!-- Main Content - 3/4 width on md+ screens -->
 	<div class="flex-1 p-4 md:w-3/4 lg:w-4/5">
 		<h2 class="mb-4 text-xl font-bold text-white">
 			{seriesDetailData.original_name} (s{selectedSeason}ep{selectedEpisode})
 		</h2>
-		<!-- Video Player -->
+		<!-- iframe -->
 		<div class="relative w-full" style="padding-top: 56.25%">
 			<iframe
 				src={iframeSources[selectedSource]}
@@ -182,7 +316,6 @@
 				title="Movie Player"
 			></iframe>
 		</div>
-		<!-- Centered Buttons -->
 		<div class="flex flex-wrap justify-center gap-2 mt-4">
 			{#each iframeSources as source, index}
 				<button
@@ -195,14 +328,10 @@
 			{/each}
 		</div>
 
-		<!-- Series Details Section -->
 		<div class="mt-8 space-y-6">
-			<!-- Overview -->
 			<div class="p-6 bg-gray-800 rounded-lg">
 				<h3 class="mb-4 text-xl font-bold">About {seriesDetailData.original_name}</h3>
 				<p class="text-gray-300">{seriesDetailData.overview}</p>
-
-				<!-- Additional Details -->
 				<div class="grid grid-cols-1 gap-4 mt-6 md:grid-cols-2">
 					<div>
 						<h4 class="mb-2 text-sm font-semibold text-gray-400">Rating</h4>
@@ -241,7 +370,6 @@
 				</div>
 			</div>
 
-			<!-- Current Episode Info -->
 			{#if episodes[selectedEpisode - 1]}
 				<div class="p-6 bg-gray-800 rounded-lg">
 					<h3 class="mb-4 text-xl font-bold">Current Episode</h3>

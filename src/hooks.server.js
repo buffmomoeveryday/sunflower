@@ -1,8 +1,9 @@
 import PocketBase from 'pocketbase';
 import { sequence } from '@sveltejs/kit/hooks';
 import { redirect } from '@sveltejs/kit';
+import { fetchWithCache, POCKETBASE_URL } from '$lib/utils';
 
-const url = 'http://localhost:8090';
+const url = POCKETBASE_URL
 
 export const authentication = async ({ event, resolve }) => {
     event.locals.pb = new PocketBase(url);

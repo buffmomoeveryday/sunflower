@@ -15,7 +15,6 @@ export async function POST({ request, cookies }) {
                 `user_id = "${user_id}" && tmdb_id = "${tmdb_id}" && season_id = "${season_id}"`
             );
         } catch (error) {
-            console.log(error.originalError)
         }
 
         const data = {
@@ -33,7 +32,7 @@ export async function POST({ request, cookies }) {
                 const updatedRecord = await pb.collection('favourite_series').update(existingRecord.id, data);
                 return json({ "id": updatedRecord.id }, { status: 200 });
             } catch (error) {
-                console.log("Error updating the record:", error);
+                ("Error updating the record:", error);
                 return json({ success: false, "error": error.message }, { status: 500 });
             }
         } else {
@@ -41,12 +40,10 @@ export async function POST({ request, cookies }) {
                 const record = await pb.collection('favourite_series').create(data);
                 return json({ "id": record.id }, { status: 201 });
             } catch (error) {
-                console.log("Error creating a new record:", error);
                 return json({ success: false, "error": error.message }, { status: 500 });
             }
         }
     } catch (error) {
-        console.log("Unexpected error:", error);
         return json({ success: false, "error": error.message }, { status: 500 });
     }
 }
@@ -72,7 +69,6 @@ export async function DELETE({ request }) {
 export async function PATCH({ request }) {
     try {
         const requestData = await request.json();
-        console.log(requestData.user_id, requestData.tmdb_id, requestData.season_id, requestData.episode_id)
         if (!requestData.user_id || !requestData.tmdb_id || !requestData.season_id || !requestData.episode_id) {
             return json({ success: false, error: 'Missing required fields' }, { status: 400 });
         }

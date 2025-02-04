@@ -1,9 +1,8 @@
 import { error, json } from '@sveltejs/kit';
-import { fetchWithCache, API_KEY } from '$lib/utils.js';
+import { fetchWithCache, API_KEY, POCKETBASE_URL } from '$lib/utils.js';
 import PocketBase from 'pocketbase';
 
-const url = 'http://localhost:8090';
-const pb = new PocketBase(url);
+const pb = new PocketBase(POCKETBASE_URL);
 
 
 export async function POST({ request, cookies }) {
@@ -23,7 +22,7 @@ export async function POST({ request, cookies }) {
                 await pb.collection('favourite_movies').delete(existingRecord.id);
                 return json({ success: true, action: 'removed' }, { status: 200 });
             } catch (error) {
-                console.log("Error deleting the record:", error);
+                ("Error deleting the record:", error);
                 return json({ success: false, error: error.message }, { status: 500 });
             }
         } else {
@@ -39,12 +38,10 @@ export async function POST({ request, cookies }) {
                 const record = await pb.collection('favourite_movies').create(data);
                 return json({ success: true, action: 'added', id: record.id }, { status: 201 });
             } catch (error) {
-                console.log("Error creating a new record:", error);
                 return json({ success: false, error: error.message }, { status: 500 });
             }
         }
     } catch (error) {
-        console.log("Unexpected error:", error);
         return json({ success: false, error: error.message }, { status: 500 });
     }
 }

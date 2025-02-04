@@ -56,8 +56,6 @@
 
 			const data = await response.json();
 
-			console.log(data);
-
 			// Sort the movies based on when they were added
 			const sortedMovies = data.records.items.sort(
 				(a, b) => new Date(b.created) - new Date(a.created)

@@ -11,7 +11,8 @@ const config = {
 				routes: {
 					include: ['/*'],
 					exclude: ['<all>']
-				}
+				},
+				runtime: "nodejs22.11.x",
 			}
 		),
 		csrf: {

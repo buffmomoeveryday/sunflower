@@ -111,7 +111,6 @@
 			fetchMovieWatchlistStatus();
 		}
 	});
-	$inspect(movie_data);
 </script>
 
 <div class="min-h-screen text-white bg-black">

@@ -7,7 +7,7 @@
 	let isAddedToHome = $state(false);
 	let { data } = $props();
 
-	let user = data.user;
+	let user = data?.user;
 	let movie_data = data.movieData;
 	let movie_id = $page.params.movie_id;
 
@@ -47,7 +47,7 @@
 			if (data) isAddedToHome = true;
 		} catch (error) {
 			console.error('Error fetching movie watchlist status:', error);
-			toast.error('Failed to check watchlist status.');
+			// toast.error('Failed to check watchlist status.');
 			isAddedToHome = false;
 		}
 	}
@@ -107,14 +107,17 @@
 	}
 
 	onMount(() => {
-		fetchMovieWatchlistStatus();
+		if (user) {
+			fetchMovieWatchlistStatus();
+		}
 	});
+	$inspect(movie_data);
 </script>
 
 <div class="min-h-screen text-white bg-black">
 	<div class="relative w-full overflow-hidden">
 		<div class="container px-4 mx-auto mt-8 md:px-8">
-			<div class="relative w-full rounded-lg shadow-2xl aspect-video">
+			<div class="relative w-full border-2 border-white rounded-lg shadow-2xl aspect-video">
 				<iframe
 					src={iframeSources[selectedSource]}
 					class="absolute w-full h-full"
@@ -155,16 +158,18 @@
 						<h1 class="text-3xl font-bold md:text-4xl">
 							<span class="flex gap-2 flex-rows">
 								{movie_data.title || movie_data.original_language}
-								<button
-									class="flex items-center gap-2 p-2 transition-colors duration-200 bg-black border border-black rounded-lg hover:bg-gray-800"
-									onclick={toggleHomeStatus}
-								>
-									<Heart
-										size={24}
-										color={isAddedToHome ? '#fb2c36' : 'white'}
-										fill={isAddedToHome ? '#fb2c36' : 'none'}
-									/>
-								</button>
+								{#if user}
+									<button
+										class="flex items-center gap-2 p-2 transition-colors duration-200 bg-black border border-black rounded-lg hover:bg-gray-800"
+										onclick={toggleHomeStatus}
+									>
+										<Heart
+											size={24}
+											color={isAddedToHome ? '#fb2c36' : 'white'}
+											fill={isAddedToHome ? '#fb2c36' : 'none'}
+										/>
+									</button>
+								{/if}
 							</span>
 						</h1>
 						<p class="mt-2 text-gray-400">{movie_data.release_date}</p>
@@ -174,11 +179,31 @@
 
 				<!-- Genres -->
 				<div class="flex flex-wrap gap-2 mt-6">
-					{#each movie_data.genres as genre}
+					{#each movie_data.genres as genre, index}
 						<span class="px-3 py-1 text-sm bg-gray-800 rounded-full hover:bg-gray-700">
 							{genre.name}
 						</span>
 					{/each}
+				</div>
+
+				<!-- Actor Details -->
+				<div class="mt-6">
+					<h2 class="text-2xl font-semibold">Cast</h2>
+					<div class="flex flex-wrap gap-4 mt-4">
+						{#each movie_data.cast as actor}
+							<div class="flex items-center gap-4">
+								<img
+									src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
+									alt={actor.name}
+									class="w-16 h-16 rounded-full"
+								/>
+								<div>
+									<p class="text-lg font-semibold">{actor.name}</p>
+									<p class="text-gray-400">{actor.character}</p>
+								</div>
+							</div>
+						{/each}
+					</div>
 				</div>
 			</div>
 
@@ -202,9 +227,11 @@
 					<div>
 						<dt class="text-gray-400">Production Companies</dt>
 						<dd>
-							{#each movie_data.production_companies as company, i (company.id)}
+							{#each movie_data.production_companies as company, index}
 								<span
-									>{company.name}{i < movie_data.production_companies.length - 1 ? ', ' : ''}</span
+									>{company.name}{index < movie_data.production_companies.length - 1
+										? ', '
+										: ''}</span
 								>
 							{/each}
 						</dd>
@@ -212,9 +239,11 @@
 					<div>
 						<dt class="text-gray-400">Country of Origin</dt>
 						<dd>
-							{#each movie_data.production_countries as country, i (country.iso_3166_1)}
+							{#each movie_data.production_countries as country, index}
 								<span
-									>{country.name}{i < movie_data.production_countries.length - 1 ? ', ' : ''}</span
+									>{country.name}{index < movie_data.production_countries.length - 1
+										? ', '
+										: ''}</span
 								>
 							{/each}
 						</dd>

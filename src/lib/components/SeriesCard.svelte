@@ -1,5 +1,5 @@
 <script>
-	let { id, poster_path, title, vote_average } = $props();
+	let { id, poster_path, name, vote_average } = $props();
 	let rating = Number(vote_average).toFixed(1);
 </script>
 
@@ -10,7 +10,7 @@
 		<div class="relative w-full pb-[150%]">
 			<img
 				src="https://image.tmdb.org/t/p/w500/{poster_path}"
-				alt={title}
+				alt={name}
 				class="absolute inset-0 object-cover w-full h-full rounded-t-lg"
 				loading="lazy"
 			/>
@@ -25,7 +25,7 @@
 
 		<div class="p-3">
 			<h3 class="text-base font-medium text-center line-clamp-2 sm:text-lg">
-				{title}
+				{name}
 			</h3>
 			<div class="flex items-center justify-center mt-2 text-sm text-gray-400">
 				<div class="flex items-center gap-2">

@@ -132,3 +132,4 @@
 		{/if}
 	</div>
 </nav>
+<ProgressBar color="#7F57F1" zIndex={100} />

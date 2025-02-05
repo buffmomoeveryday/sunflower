@@ -325,7 +325,7 @@
 		<div class="relative w-full" style="padding-top: 56.25%">
 			<iframe
 				src={iframeSources[selectedSource]}
-				class="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg"
+				class="absolute top-0 left-0 w-full h-full border-2 border-white rounded-lg shadow-lg"
 				allowfullscreen
 				loading="lazy"
 				title="Movie Player"

@@ -3,8 +3,8 @@
 	import { onMount } from 'svelte';
 
 	let stream_id = $page.params.id;
-	let res = null;
-	let selectedStreamIndex = 0;
+	let res = $state(null);
+	let selectedStreamIndex = $state(0);
 
 	onMount(async () => {
 		try {
@@ -19,8 +19,6 @@
 			res = { error: error.message };
 		}
 	});
-
-	console.log(res);
 
 	function changeStream(index) {
 		selectedStreamIndex = index;
@@ -42,7 +40,7 @@
 			{#each res as stream, index}
 				<button
 					class="px-4 py-2 text-white transition-colors duration-200 bg-gray-800 rounded hover:bg-gray-700"
-					on:click={() => changeStream(index)}
+					onclick={() => changeStream(index)}
 				>
 					Stream {stream.streamNo}
 				</button>
@@ -62,7 +60,7 @@
 					height="400px"
 					frameborder="0"
 					allowfullscreen
-					class="rounded-lg shadow-md"
+					class="border-2 border-white rounded-lg shadow-md"
 				></iframe>
 			</div>
 

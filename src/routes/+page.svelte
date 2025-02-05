@@ -1,9 +1,11 @@
 <script>
 	import { error } from '@sveltejs/kit';
+	import { fade } from 'svelte/transition';
+	import { onMount } from 'svelte';
+
 	import MovieCard from '$lib/components/MovieCard.svelte';
 	import SeriesCard from '$lib/components/SeriesCard.svelte';
 	import Navbar from '$lib/components/Navbar.svelte';
-	import { onMount } from 'svelte';
 
 	let { data } = $props();
 
@@ -127,8 +129,8 @@
 	{/if}
 
 	<!-- My Watchlist Section -->
-	{#if myMoiveWatchlist.length > 0}
-		<section class="container p-4 mx-auto mt-6 rounded-lg">
+	<section class="container p-4 mx-auto mt-6 rounded-lg" in:fade>
+		{#if myMoiveWatchlist.length > 0}
 			<div class="flex items-center justify-between">
 				<h2 class="text-xl font-bold md:text-2xl">My Movies Watchlist</h2>
 				<span class="text-sm text-gray-400">{myMoiveWatchlist.length} items</span>
@@ -147,8 +149,8 @@
 					/>
 				{/each}
 			</div>
-		</section>
-	{/if}
+		{/if}
+	</section>
 
 	<!-- Popular Movies Section -->
 	<section class="container p-4 mx-auto mt-6 rounded-lg">

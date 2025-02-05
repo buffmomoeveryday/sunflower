@@ -3,42 +3,18 @@
 	import MovieCard from '$lib/components/MovieCard.svelte';
 	import SeriesCard from '$lib/components/SeriesCard.svelte';
 	import Navbar from '$lib/components/Navbar.svelte';
-
 	import { onMount } from 'svelte';
 
 	let { data } = $props();
 
-	let user = data.user;
+	let user = data?.user;
 
 	let popularMovies = data.popularMoviesData;
 	let newReleases = data.newReleasesData;
 	let mySeriesWatchlist = $state([]);
 	let myMoiveWatchlist = $state([]);
 
-	async function loadSeriesWatchlist(user_id) {
-		try {
-			const response = await fetch(`/api/series/watchlist/list`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ user_id: user.id })
-			});
-
-			if (!response.ok) {
-				throw new Error(`Failed to load series watchlist: ${response.statusText}`);
-			}
-			const data = await response.json();
-			const sortedSeries = data.records.items.sort(
-				(a, b) => new Date(b.created) - new Date(a.created)
-			);
-			mySeriesWatchlist = sortedSeries;
-			localStorage.setItem('homepage_series', JSON.stringify(sortedSeries));
-		} catch (error) {
-			console.error('Error loading series watchlist:', error);
-			mySeriesWatchlist = [];
-		}
-	}
+	let isBrave = $state(true);
 
 	async function loadMovieWatchlist(user_id) {
 		try {
@@ -78,53 +54,65 @@
 		}
 	}
 
+	function checkIfBrave() {
+		if (window.navigator.brave != undefined && window.navigator.brave.isBrave.name == 'isBrave') {
+			isBrave = true;
+		} else {
+			isBrave = false;
+		}
+	}
+
 	onMount(() => {
-		loadSeriesWatchlist();
-		loadMovieWatchlist();
+		checkIfBrave();
+		if (user) {
+			// loadSeriesWatchlist();
+			loadMovieWatchlist();
+		}
 	});
 </script>
 
 <div class="min-h-screen p-4 text-white bg-black">
-	<div class="container p-6 mx-auto mt-6 space-y-6 rounded-lg shadow-lg bg-gray-50">
-		<!-- Viewing Experience Section -->
-		<div class="flex items-start p-4 space-x-4 border rounded-lg">
-			<div class="flex-1 text-blue-900">
-				<h2 class="text-xl font-semibold">For the best viewing experience without ads:</h2>
-				<ul class="mt-3 ml-5 space-y-2 list-disc">
-					<li>
-						On mobile devices, we recommend using
-						<a
-							href="https://play.google.com/store/apps/details?id=com.brave.browser&hl=en&pli=1"
-							target="_blank"
-							class="font-medium text-blue-600 hover:underline">Brave Browser Android</a
-						>
-						or
-						<a
-							href="https://apps.apple.com/us/app/brave-browser-search-engine/id1052879175"
-							target="_blank"
-							class="font-medium text-blue-600 hover:underline">Brave Browser iOS</a
-						>.
-					</li>
-					<li>
-						Please install the uBlock Origin extension for
-						<a
-							href="https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm?hl=en&pli=1"
-							target="_blank"
-							class="font-bold text-blue-600 hover:underline">Chrome</a
-						>
-						or
-						<a
-							href="https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/"
-							target="_blank"
-							class="font-bold text-blue-600 hover:underline">Firefox</a
-						>.
-					</li>
-				</ul>
+	{#if !isBrave}
+		<div class="container p-6 mx-auto mt-6 space-y-6">
+			<div class="flex items-start p-4 space-x-4 border rounded-lg bg-gray-50">
+				<div class="flex-1 text-blue-900">
+					<h2 class="text-xl font-semibold">For the best viewing experience without ads:</h2>
+					<ul class="mt-3 ml-5 space-y-2 list-disc">
+						<li>
+							On mobile devices, we recommend using
+							<a
+								href="https://play.google.com/store/apps/details?id=com.brave.browser&hl=en&pli=1"
+								target="_blank"
+								class="font-medium text-blue-600 hover:underline">Brave Browser Android</a
+							>
+							or
+							<a
+								href="https://apps.apple.com/us/app/brave-browser-search-engine/id1052879175"
+								target="_blank"
+								class="font-medium text-blue-600 hover:underline">Brave Browser iOS</a
+							>.
+						</li>
+						<li>
+							Please install the uBlock Origin extension for
+							<a
+								href="https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm?hl=en&pli=1"
+								target="_blank"
+								class="font-bold text-blue-600 hover:underline">Chrome</a
+							>
+							or
+							<a
+								href="https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/"
+								target="_blank"
+								class="font-bold text-blue-600 hover:underline">Firefox</a
+							>.
+						</li>
+					</ul>
+				</div>
 			</div>
 		</div>
-
-		{#if !user}
-			<!-- Account Sync Section -->
+	{/if}
+	{#if !user}
+		<div class="container p-6 mx-auto mt-6 space-y-6">
 			<div class="flex items-start p-4 space-x-4 border border-blue-300 rounded-lg bg-blue-50">
 				<div class="flex-1 text-blue-900">
 					<h2 class="text-xl font-semibold">Sync Your Episodes and Series:</h2>
@@ -135,38 +123,8 @@
 					</p>
 				</div>
 			</div>
-		{/if}
-	</div>
-
-	{#await mySeriesWatchlist}
-		<p>waiting for the promise to resolve...</p>
-	{:then mySeriesWatchlist}
-		{#if mySeriesWatchlist.length > 0}
-			<section class="container p-4 mx-auto mt-6 rounded-lg">
-				<div class="flex items-center justify-between">
-					<h2 class="text-xl font-bold md:text-2xl">My Series Watchlist</h2>
-					<span class="text-sm text-gray-400">{mySeriesWatchlist.length} items</span>
-				</div>
-				<div
-					class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
-				>
-					{#each mySeriesWatchlist as series}
-						<SeriesCard
-							id={series.tmdb_id}
-							title={series.title}
-							name={series.title}
-							poster_path={series.poster_path}
-							first_air_date={series.first_air_date}
-							vote_average={series.average_ratings}
-							media_type="tv"
-						/>
-					{/each}
-				</div>
-			</section>
-		{/if}
-	{:catch error}
-		<p>Something went wrong: {error.message}</p>
-	{/await}
+		</div>
+	{/if}
 
 	<!-- My Watchlist Section -->
 	{#if myMoiveWatchlist.length > 0}

@@ -1,20 +1,19 @@
 <script>
 	import { onMount } from 'svelte';
-	import { Heart } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
+	import { Heart, ChevronLeft, ChevronRight } from 'lucide-svelte';
 
 	let { data } = $props();
 	let seriesDetailData = data.seriesDetailData;
-	let selectedSource = $state(0);
+	let user = data?.user;
 
 	// Reactive state
+	let selectedSource = $state(0);
 	let selectedSeason = $state(1);
 	let episodes = $state([]);
 	let selectedEpisode = $state(1);
 	let isAddedToHome = $state(false);
-
-	let user = data?.user;
-
+	let isSidebarVisible = $state(true);
 	// Derived State
 	let iframeSources = $derived([
 		`https://vidsrc.cc/v3/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
@@ -235,6 +234,29 @@
 		}
 	}
 
+	function previousEpisode() {
+		if (selectedEpisode > 1) {
+			selectEpisode(selectedEpisode - 1);
+		} else if (selectedSeason > 1) {
+			selectedSeason--;
+			fetchEpisodes(selectedSeason).then(() => {
+				selectEpisode(episodes.length); // Go to the last episode of the previous season
+			});
+		}
+	}
+
+	function nextEpisode() {
+		if (selectedEpisode < episodes.length) {
+			selectEpisode(selectedEpisode + 1);
+		} else {
+			// If the current season's last episode, go to the first episode of the next season
+			selectedSeason++;
+			fetchEpisodes(selectedSeason).then(() => {
+				selectEpisode(1); // Go to the first episode of the next season
+			});
+		}
+	}
+
 	onMount(async () => {
 		storeSeriesDataOnceWithDelay();
 		await getProgress();
@@ -310,6 +332,14 @@
 			></iframe>
 		</div>
 		<div class="flex flex-wrap justify-center gap-2 mt-4">
+			<button
+				onclick={previousEpisode}
+				disabled={selectedSeason === 1 && selectedEpisode === 1}
+				class="flex items-center px-3 py-2 text-gray-600 transition-all bg-gray-200 rounded-lg shadow hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400"
+			>
+				<ChevronLeft class="w-5 h-5" />
+				<span class="ml-2">Previous</span>
+			</button>
 			{#each iframeSources as source, index}
 				<button
 					class={'px-3 py-2 text-sm font-semibold rounded-md ' +
@@ -319,8 +349,17 @@
 					Server {index + 1}
 				</button>
 			{/each}
+			<!-- Next Button -->
+			<button
+				onclick={nextEpisode}
+				disabled={selectedSeason >= seriesDetailData.total_seasons &&
+					selectedEpisode >= episodes.length}
+				class="flex items-center px-3 py-2 text-gray-600 transition-all bg-gray-200 rounded-lg shadow hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400"
+			>
+				<span class="mr-2">Next</span>
+				<ChevronRight class="w-5 h-5" />
+			</button>
 		</div>
-
 		<div class="mt-8 space-y-6">
 			<div class="p-6 bg-gray-800 rounded-lg">
 				<h3 class="mb-4 text-xl font-bold">About {seriesDetailData.original_name}</h3>
@@ -397,3 +436,14 @@
 		</div>
 	</div>
 </div>
+
+<style>
+	.no-scrollbar::-webkit-scrollbar {
+		display: none;
+	}
+
+	.no-scrollbar {
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+</style>

@@ -27,6 +27,7 @@ export const actions = {
         const data = await request.formData();
         const email = data.get('email');
         const password = data.get('password');
+        console.log(email, password)
 
         if (!email || !password) {
             return fail(400, { emailRequired: email === null, passwordRequired: password === null });

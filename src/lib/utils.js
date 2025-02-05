@@ -16,6 +16,6 @@ export async function fetchWithCache(url, cacheKey, ttl = 300000) {
 
 
 export const API_KEY = "0a9e7f0d6a5dacc13c60776291c3edcc"
-export const POCKETBASE_URL = 'http://localhost:8090'
-// export const POCKETBASE_URL = 'https://sunflower-pocketbase.fly.dev'
+// export const POCKETBASE_URL = 'http://localhost:8090'
+export const POCKETBASE_URL = 'https://sunflower-pocketbase.fly.dev'
 export const PUBLIC_REDIRECT_URI = "/"

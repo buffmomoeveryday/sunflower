@@ -12,7 +12,7 @@ const config = {
 					include: ['/*'],
 					exclude: ['<all>']
 				},
-				runtime: "nodejs22.11.x",
+				environment: "nodejs22.x",
 			}
 		),
 		csrf: {

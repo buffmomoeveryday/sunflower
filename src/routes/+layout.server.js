@@ -1,5 +1,4 @@
-import { createHash } from 'crypto';
-
+import { createHash } from 'node:crypto';
 
 export async function load({ locals }) {
     const user = locals.pb.authStore.baseModel
@@ -16,7 +15,6 @@ export async function load({ locals }) {
         gravitarUrl = generateAvatarUrl(user.email);
     }
 
-    console.log(gravitarUrl)
 
     return {
         user,

@@ -1,0 +1,14 @@
+{
+  "name": "Sunflower",
+  "description": "Watch Movie Live",
+  "display": "standalone",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "icons/sunflower.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

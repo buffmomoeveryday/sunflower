@@ -4,15 +4,15 @@
 	const matchesLiveAPIUrl = 'https://streamed.su/api/matches/live';
 	const matchesTodayAPIUrl = 'https://streamed.su/api/matches/all-today';
 
-	let matchesLive = null;
-	let matchesToday = null;
+	let matchesLive = $state(null);
+	let matchesToday = $state(null);
 
-	let football = [];
-	let cricket = [];
-	let basketball = [];
+	let football = $state([]);
+	let cricket = $state([]);
+	let basketball = $state([]);
 
 	function formatUnixTimestamp(timestamp) {
-		const isSeconds = timestamp.toString().length === 10; // Check if it's in seconds
+		const isSeconds = timestamp.toString().length === 10;
 		const date = new Date(isSeconds ? timestamp * 1000 : timestamp);
 		return date.toLocaleString();
 	}
@@ -34,6 +34,8 @@
 			console.error('Error fetching match data:', error);
 		}
 	});
+
+	$inspect(matchesLive);
 </script>
 
 <h1 class="text-4xl font-bold">Football</h1>

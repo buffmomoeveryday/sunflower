@@ -11,7 +11,6 @@
 	});
 	let isLoading = $state(false);
 
-
 	// Fetch new results
 	async function fetchMoviesByPage(page) {
 		isLoading = true;

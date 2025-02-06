@@ -10,7 +10,7 @@
 	let errorMessage = $state('');
 	let currentPage = $state(1);
 	let totalPages = $state(1);
-	let videoType = $state('movie');
+	let videoType = $state('tv');
 	let bollywood = $state(false);
 	let previousSearches = $state([]);
 
@@ -99,6 +99,7 @@
 				>
 					<option value="tv">Series</option>
 					<option value="movie">Movie</option>
+					<option value="anime">Anime</option>
 				</select>
 
 				<button

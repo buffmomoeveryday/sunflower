@@ -1,26 +1,29 @@
 import { json } from '@sveltejs/kit'
 import { fetchWithCache, API_KEY } from '$lib/utils.js';
 
-
-
-export async function POST(event) {
-
-    let serachResults = []
-    const page = 1;
+export async function POST({ request }) {
     try {
-        const data = await event.request.formData();
-        const search = data.get("search")
-        if (!search) {
-            return { success: false, error: "Search query is required" };
-        }
+        const { page = 1 } = (await request.json()) || {};
         let animeSearchUrl =
-            `https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&language=en-US&page=1&with_genres=16&with_keywords=210024|287501&with_text_query=${search}`;
-
-        serachResults = await fetchWithCache(animeSearchUrl, search)
-        return json({ success: true, searchResults: serachResults })
-
+            `https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&language=en-US&page=1&with_genres=16&with_keywords=210024|287501&page=${page}`;
+        const tmdbResponse = await fetchWithCache(animeSearchUrl, `animePages${page}`);
+        return json({
+            success: true,
+            results: tmdbResponse.results,
+            total_pages: tmdbResponse.total_pages,
+            current_page: page
+        });
     } catch (error) {
-        return json({ success: false, error: error })
+        console.error('Error in /api/movie/bolywood:', error);
+        return json(
+            {
+                success: false,
+                error: 'Failed to fetch search results',
+                results: [],
+                total_pages: 0,
+                current_page: 0
+            },
+            { status: 500 }
+        );
     }
-
 }

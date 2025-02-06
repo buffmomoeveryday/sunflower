@@ -8,12 +8,16 @@
 >
 	<a href="/watch/series/{id}" class="block text-white no-underline">
 		<div class="relative w-full pb-[150%]">
-			<img
-				src="https://image.tmdb.org/t/p/w500/{poster_path}"
-				alt={name}
-				class="absolute inset-0 object-cover w-full h-full rounded-t-lg"
-				loading="lazy"
-			/>
+			{#if poster_path}
+				<img
+					src={poster_path
+						? `https://image.tmdb.org/t/p/w500/${poster_path}`
+						: 'https://picsum.photos/200'}
+					alt={name}
+					class="absolute inset-0 object-cover w-full h-full rounded-t-lg"
+					loading="lazy"
+				/>
+			{/if}
 
 			<!-- Rating Badge -->
 			<div class="absolute top-2 right-2">

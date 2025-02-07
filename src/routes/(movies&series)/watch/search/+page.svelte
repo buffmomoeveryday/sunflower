@@ -38,7 +38,6 @@
 				totalPages = json.total_pages;
 				currentPage = json.current_page;
 
-				// Save the search query and video type to previous searches
 				const searchEntry = { query: search, type: videoType };
 				if (!previousSearches.some((entry) => entry.query === search && entry.type === videoType)) {
 					previousSearches = [searchEntry, ...previousSearches];

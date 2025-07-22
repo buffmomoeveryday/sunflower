@@ -1,62 +1,89 @@
 <script>
-	import { onMount } from 'svelte';
+    import { onMount } from 'svelte';
+	import MatchCard from '$lib/components/sports/MatchCard.svelte';
 
-	const matchesLiveAPIUrl = 'https://streamed.su/api/matches/live';
-	const matchesTodayAPIUrl = 'https://streamed.su/api/matches/all-today';
 
-	let matchesLive = $state(null);
-	let matchesToday = $state(null);
+    const matchesLiveAPIUrl = 'https://streamed.su/api/matches/live ';
+    const matchesTodayAPIUrl = 'https://streamed.su/api/matches/all-today ';
 
-	let football = $state([]);
-	let cricket = $state([]);
-	let basketball = $state([]);
+    let matchesLive = $state(null);
+    let matchesToday = $state(null);
 
-	function formatUnixTimestamp(timestamp) {
-		const isSeconds = timestamp.toString().length === 10;
-		const date = new Date(isSeconds ? timestamp * 1000 : timestamp);
-		return date.toLocaleString();
-	}
+    let football = $state([]);
+    let cricket = $state([]);
+    let basketball = $state([]);
 
-	onMount(async () => {
-		try {
-			const matchesLiveResponse = await fetch(matchesLiveAPIUrl);
-			if (!matchesLiveResponse.ok) throw new Error('Failed to fetch live matches');
-			matchesLive = await matchesLiveResponse.json();
 
-			const matchesTodayResponse = await fetch(matchesTodayAPIUrl);
-			if (!matchesTodayResponse.ok) throw new Error("Failed to fetch today's matches");
-			matchesToday = await matchesTodayResponse.json();
 
-			football = matchesLive.filter((match) => match.category === 'football');
-			cricket = matchesLive.filter((match) => match.category === 'cricket');
-			basketball = matchesLive.filter((match) => match.category === 'basketball');
-		} catch (error) {
-			console.error('Error fetching match data:', error);
-		}
-	});
 
-	$inspect(matchesLive);
+
+    onMount(async () => {
+        try {
+            const matchesLiveResponse = await fetch(matchesLiveAPIUrl);
+            if (!matchesLiveResponse.ok) throw new Error('Failed to fetch live matches');
+            matchesLive = await matchesLiveResponse.json();
+
+            const matchesTodayResponse = await fetch(matchesTodayAPIUrl);
+            if (!matchesTodayResponse.ok) throw new Error("Failed to fetch today's matches");
+            matchesToday = await matchesTodayResponse.json();
+
+            football = matchesLive.filter((match) => match.category === 'football');
+            cricket = matchesLive.filter((match) => match.category === 'cricket');
+            basketball = matchesLive.filter((match) => match.category === 'basketball');
+        } catch (error) {
+            console.error('Error fetching match data:', error);
+        }
+    });
 </script>
 
-<h1 class="text-4xl font-bold">Football</h1>
-{#each football as match}
-	<a href="/sports/streams/{match.id}">
-		{match.title} - {formatUnixTimestamp(match.date)}<br />
-	</a>
-{/each}
+<style>
+    .line-clamp-1 {
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
 
-<hr class="mt-2 mb-2 border border-black" />
-<h1 class="text-4xl font-bold">Cricket</h1>
-{#each cricket as match}
-	<a href="/sports/streams/{match.id}">
-		{match.title} - {formatUnixTimestamp(match.date)}<br />
-	</a>
-{/each}
+    .aspect-\[2\/3\] {
+        aspect-ratio: 2 / 3;
+    }
 
-<hr class="mt-2 mb-2 border border-black" />
-<h1 class="text-4xl font-bold">Basketball</h1>
-{#each basketball as match}
-	<a href="/sports/streams/{match.id}">
-		{match.title} - {formatUnixTimestamp(match.date)}<br />
-	</a>
-{/each}
+    @supports not (aspect-ratio: 2/3) {
+        .aspect-\[2\/3\] {
+            padding-bottom: 150%;
+        }
+    }
+</style>
+
+
+
+<!-- Layout Section -->
+
+<div class="container px-4 py-8 mx-auto space-y-12">
+    <section>
+        <h2 class="text-3xl font-bold mb-6 text-white">⚽ Football Matches</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {#each football as match}
+			<MatchCard match={match} />
+            {/each}
+        </div>
+    </section>
+
+    <section>
+        <h2 class="text-3xl font-bold mb-6 text-white">🏏 Cricket Matches</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {#each cricket as match}
+			<MatchCard match={match} />
+            {/each}
+        </div>
+    </section>
+
+    <section>
+        <h2 class="text-3xl font-bold mb-6 text-white">🏀 Basketball Matches</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {#each basketball as match}
+			<MatchCard match={match} />
+            {/each}
+        </div>
+    </section>
+</div>

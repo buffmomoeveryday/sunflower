@@ -3,8 +3,8 @@
 	import { fade } from 'svelte/transition';
 	import { onMount } from 'svelte';
 
-	import MovieCard from '$lib/components/MovieCard.svelte';
-	import SeriesCard from '$lib/components/SeriesCard.svelte';
+	import MovieCard from '$lib/components/card/MovieCard.svelte';
+	import SeriesCard from '$lib/components/card/SeriesCard.svelte';
 	import Navbar from '$lib/components/Navbar.svelte';
 
 	let { data } = $props();
@@ -113,6 +113,7 @@
 			</div>
 		</div>
 	{/if}
+
 	{#if !user}
 		<div class="container p-6 mx-auto mt-6 space-y-6">
 			<div class="flex items-start p-4 space-x-4 border border-blue-300 rounded-lg bg-blue-50">
@@ -129,7 +130,7 @@
 	{/if}
 
 	<!-- My Watchlist Section -->
-	<section class="container p-4 mx-auto mt-6 rounded-lg" in:fade>
+	<!-- <section class="container p-4 mx-auto mt-6 rounded-lg" in:fade>
 		{#if myMoiveWatchlist.length > 0}
 			<div class="flex items-center justify-between">
 				<h2 class="text-xl font-bold md:text-2xl">My Movies Watchlist</h2>
@@ -150,14 +151,14 @@
 				{/each}
 			</div>
 		{/if}
-	</section>
+	</section> -->
 
 	<!-- Popular Movies Section -->
 	<section class="container p-4 mx-auto mt-6 rounded-lg">
 		{#if popularMovies}
 			<h2 class="text-xl font-bold md:text-2xl">Popular Movies</h2>
 			<div
-				class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6"
+			class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
 			>
 				{#each popularMovies.results as movie}
 					<MovieCard {...movie} />
@@ -179,4 +180,6 @@
 			</div>
 		{/if}
 	</section>
+
+	<!-- Top Rated Movies Section -->
 </div>

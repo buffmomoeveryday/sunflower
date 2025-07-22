@@ -1,9 +1,12 @@
+// middleware
+
 import PocketBase from 'pocketbase';
 import { sequence } from '@sveltejs/kit/hooks';
 import { redirect } from '@sveltejs/kit';
 import { fetchWithCache, POCKETBASE_URL } from '$lib/utils';
 
 const url = POCKETBASE_URL
+const protectedPrefix = ['/profile',];
 
 export const authentication = async ({ event, resolve }) => {
     event.locals.pb = new PocketBase(url);
@@ -21,7 +24,6 @@ export const authentication = async ({ event, resolve }) => {
 };
 
 
-const protectedPrefix = ['/profile',];
 export const authorization = async ({ event, resolve }) => {
     if (protectedPrefix.some((path) => event.url.pathname.startsWith(path))) {
         if (!event.locals.pb.authStore.isValid) {
@@ -30,7 +32,6 @@ export const authorization = async ({ event, resolve }) => {
     }
     return await resolve(event);
 };
-
 
 
 

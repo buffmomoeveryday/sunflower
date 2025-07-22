@@ -23,11 +23,11 @@ export const actions = {
 
         throw redirect(303, '/profile');
     },
+    
     login: async ({ locals, request }) => {
         const data = await request.formData();
         const email = data.get('email');
         const password = data.get('password');
-        console.log(email, password)
 
         if (!email || !password) {
             return fail(400, { emailRequired: email === null, passwordRequired: password === null });
@@ -42,7 +42,7 @@ export const actions = {
 
         throw redirect(303, '/watch/series');
     },
-
+    
     logout: async ({ locals, request }) => {
         locals.pb.authStore.clear();
         throw redirect(303, '/watch/series')

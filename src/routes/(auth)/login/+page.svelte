@@ -1,33 +1,29 @@
 <script>
 	import { page } from '$app/stores';
 	let { data, form } = $props();
-	let buttonDisabled = $state('true');
+	let buttonDisabled = $state(true); // Initialize as true
 	let email = $state('');
 	let password = $state('');
 
 	$effect(() => {
-		if (email == '' || password == '') {
-			buttonDisabled = true;
-		} else {
-			buttonDisabled = false;
-		}
+		buttonDisabled = email === '' || password === '';
 	});
 </script>
 
-<div class="min-h-[100vh] bg-black">
-	<div class="flex flex-col justify-center h-full p-6 text-white">
+<div class="min-h-screen bg-black flex items-center justify-center p-4">
+	<div class="bg-black rounded-xl shadow-2xl p-8 max-w-md w-full border border-gray-700">
 		{#if form?.fail}
-			<div class="px-4 py-2 mb-4 text-red-400 bg-red-900 rounded-lg bg-opacity-20">
+			<div class="px-5 py-3 mb-6 text-red-300 bg-red-900 rounded-lg bg-opacity-30 text-center font-medium">
 				{form.message}
 			</div>
 		{/if}
 
-		<form action="?/login" method="post">
-			<h1 class="pb-5 text-xl font-bold">Login</h1>
-			<label class="block mb-4">
-				<span class="block text-sm font-medium text-gray-300">E-Mail</span>
+		<form action="?/login" method="post" class="space-y-6">
+			
+			<label class="block">
+				<span class="block text-sm font-semibold text-gray-300 mb-2">Email Address</span>
 				<input
-					class="w-full px-3 py-2 mt-1 text-gray-100 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+					class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition duration-200 ease-in-out"
 					name="email"
 					title="E-Mail"
 					type="email"
@@ -35,28 +31,33 @@
 					bind:value={email}
 				/>
 			</label>
-			<label class="block mb-4">
-				<span class="block text-sm font-medium text-gray-300">Password</span>
+			
+			<label class="block">
+				<span class="block text-sm font-semibold text-gray-300 mb-2">Password</span>
 				<input
-					class="w-full px-3 py-2 mt-1 text-gray-100 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+					class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white-500 transition duration-200 ease-in-out"
 					name="password"
 					title="Password"
 					type="password"
 					bind:value={password}
-					placeholder="Your password"
+					placeholder="Your secret password"
 				/>
 			</label>
 
 			<button
-				class="w-full px-4 py-2 font-semibold text-black bg-white rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-75 disabled:bg-gray-500"
+				class="w-full px-6 py-3 mt-4 bg-white font-bold text-black  rounded-lg shadow-lg  focus:outline-none focus:ring-3 focus:ring-white focus:ring-opacity-75 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 ease-in-out"
 				type="submit"
 				disabled={buttonDisabled}
 			>
 				Login
 			</button>
 		</form>
-		<span>
-			Don't Have an Account <a href="/register">Register</a>
-		</span>
+		
+		<div class="mt-8 text-center text-gray-400 text-sm">
+			Don't have an account? 
+			<a href="/register" class="text-white hover:text-blue font-medium transition duration-200 ease-in-out">
+				Register here
+			</a>
+		</div>
 	</div>
 </div>

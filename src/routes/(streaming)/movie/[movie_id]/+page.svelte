@@ -1,0 +1,310 @@
+<script>
+	import { Heart, ArrowLeft, ArrowRight } from 'lucide-svelte';
+	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
+	import MovieCard from '$lib/components/card/MovieCard.svelte';
+	import { fade } from 'svelte/transition';
+	
+	let { data } = $props();
+
+	let isAddedToHome = $state(false);
+
+	let user = data?.user;
+	let movie_data = data.movieData;
+	let movie_id = $page.params.movie_id;
+	let recommendation_data = data.recommendation_data;
+
+	console.log(recommendation_data)
+	console.log(movie_data)
+
+  	let playerEvent = $state(null);
+	let recommendationsScrollRef = $state();
+
+	// function handleMessage(event) {
+	// 	if (event.data && event.data.type === 'PLAYER_EVENT') {
+	// 	const { event: eventType, currentTime, duration } = event.data.data;
+	// 	playerEvent = { eventType, currentTime, duration };
+	// 	console.log(`Player ${eventType} at ${currentTime}s of ${duration}s`);
+	// 	}
+	// 	console.log("Message received from the player: ", JSON.parse(event.data)); // Message received from player
+	// 	if (typeof event.data === "string") {
+	// 		playerEvent = event.data;
+	// 	}
+	// }
+
+	let iframeSources = $state([
+		`https://vidsrc.icu/embed/movie/${movie_id}`,
+		`https://vidsrc.to/embed/movie/${movie_id}`,
+		`https://vidsrc.cc/v2/embed/movie/${movie_id}?autoPlay=true`,
+		`https://player.videasy.net/movie/${movie_id}`
+	]);
+
+	let selectedSource = $state(0);
+
+	function changeSource(index) {
+		selectedSource = index;
+	}
+
+	function scrollLeft(ref) {
+		ref.scrollBy({ left: -400, behavior: 'smooth' });
+	}
+
+	function scrollRight(ref) {
+		ref.scrollBy({ left: 400, behavior: 'smooth' });
+	}
+
+	const HOME_STORAGE_KEY = 'homepage_movies';
+
+	async function fetchMovieWatchlistStatus() {
+		try {
+			const response = await fetch(`/api/movie/watchlist/get`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					user_id: user.id, // User ID
+					tmdb_id: movie_id // TMDB ID
+				})
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch movie watchlist status: ${response.statusText}`);
+			}
+
+			const data = await response.json();
+			if (data) isAddedToHome = true;
+		} catch (error) {
+			console.error('Error fetching movie watchlist status:', error);
+			isAddedToHome = false;
+		}
+	}
+
+	async function toggleHomeStatus() {
+		try {
+			const postData = {
+				user_id: user.id,
+				tmdb_id: movie_data.id,
+				title: movie_data.title,
+				poster_path: movie_data.poster_path,
+				average_ratings: movie_data.vote_average
+			};
+
+			const response = await fetch('/api/movie/watchlist/save', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(postData)
+			});
+
+			if (!response.ok) {
+				const { error } = await response.json();
+				throw new Error(error || 'Failed to update watchlist');
+			}
+
+			const result = await response.json();
+
+			if (result.action === 'added') {
+				// Add to local storage
+				const storedMovies = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
+				const moviesData = {
+					id: movie_data.id,
+					name: movie_data.original_name,
+					poster_path: movie_data.poster_path,
+					first_air_date: movie_data.first_air_date,
+					vote_average: movie_data.vote_average,
+					addedAt: new Date().toISOString()
+				};
+				storedMovies.push(moviesData);
+				localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedMovies));
+				toast.success('Added to the list');
+				isAddedToHome = true;
+			} else if (result.action === 'removed') {
+				// Remove from local storage
+				isAddedToHome = false;
+				const storedMovies = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
+				const updatedMovies = storedMovies.filter((movie) => movie.id !== movie_data.id);
+				localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(updatedMovies));
+				toast.success('Removed from the list');
+			}
+		} catch (error) {
+			console.error(error);
+			toast.error('Something went wrong');
+		}
+	}
+
+	onMount(() => {
+		if (user) {
+			fetchMovieWatchlistStatus();
+		}
+	});
+</script>
+
+<!-- <svelte:window on:message={handleMessage} /> -->
+
+<div class="min-h-screen p-4 text-white bg-black">
+	<!-- Video Player Section -->
+	<section class="container px-4 mx-auto mt-8 md:px-8">
+		<div class="relative w-full border-2 border-white rounded-lg shadow-2xl aspect-video">
+			<iframe
+				src={iframeSources[selectedSource]}
+				class="absolute pt-2 w-full h-full rounded-lg"
+				allowfullscreen
+				loading="lazy"
+				title="Movie Player"
+				scrolling="no"
+			></iframe>
+		</div>
+
+		<!-- Server Selection Buttons -->
+		<div class="flex flex-wrap justify-center gap-2 mt-4">
+			{#each iframeSources as source, index}
+				<button
+					class={'px-3 py-2 text-sm font-semibold rounded-md transition-colors ' +
+						(index === selectedSource ? 'bg-white text-black' : 'bg-gray-800 hover:bg-gray-700')}
+					onclick={() => changeSource(index)}
+				>
+					Server {index + 1}
+				</button>
+			{/each}
+		</div>
+	</section>
+
+	<!-- Movie Details Section -->
+	<section class="container px-4 py-8 mx-auto md:px-8 md:py-12">
+		<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+			<!-- Left Column - Movie Info -->
+			<div class="lg:col-span-2">
+				<div class="flex flex-col gap-6 md:flex-row">
+					<img
+						src={`https://image.tmdb.org/t/p/w500${movie_data.poster_path}`}
+						alt="Movie Poster"
+						class="w-40 rounded-lg shadow-lg md:w-48"
+					/>
+
+					<div class="flex-1">
+						<h1 class="text-3xl font-bold md:text-4xl">
+							<span class="flex items-center gap-2">
+								{movie_data.title || movie_data.original_language}
+								{#if user}
+									<button
+										class="flex items-center gap-2 p-2 transition-colors duration-200 bg-black border border-gray-700 rounded-lg hover:bg-gray-800"
+										onclick={toggleHomeStatus}
+									>
+										<Heart
+											size={24}
+											color={isAddedToHome ? '#fb2c36' : 'white'}
+											fill={isAddedToHome ? '#fb2c36' : 'none'}
+										/>
+									</button>
+								{/if}
+							</span>
+						</h1>
+						<p class="mt-2 text-gray-400">{movie_data.release_date}</p>
+						<p class="mt-4 text-gray-300 leading-relaxed">{movie_data.overview}</p>
+					</div>
+				</div>
+
+				<!-- Genres -->
+				<div class="flex flex-wrap gap-2 mt-6">
+					{#each movie_data.genres as genre}
+						<span class="px-3 py-1 text-sm bg-gray-800 rounded-full hover:bg-gray-700 transition-colors">
+							{genre.name}
+						</span>
+					{/each}
+				</div>
+			</div>
+
+			<!-- Right Column - Production Details -->
+			<div class="p-6 bg-gray-900 rounded-lg shadow-md">
+				<h3 class="mb-4 text-xl font-bold">Production Details</h3>
+				<dl class="space-y-3 text-sm">
+					<div>
+						<dt class="text-gray-400 font-medium">Status</dt>
+						<dd class="mt-1">{movie_data.status}</dd>
+					</div>
+					<div>
+						<dt class="text-gray-400 font-medium">Original Language</dt>
+						<dd class="mt-1">{movie_data.original_language}</dd>
+					</div>
+					<div>
+						<dt class="text-gray-400 font-medium">Title</dt>
+						<dd class="mt-1">{movie_data.title}</dd>
+					</div>
+					<div>
+						<dt class="text-gray-400 font-medium">Production Companies</dt>
+						<dd class="mt-1">
+							{#each movie_data.production_companies as company, index}
+								<span>
+									{company.name}{index < movie_data.production_companies.length - 1 ? ', ' : ''}
+								</span>
+							{/each}
+						</dd>
+					</div>
+					<div>
+						<dt class="text-gray-400 font-medium">Country of Origin</dt>
+						<dd class="mt-1">
+							{#each movie_data.production_countries as country, index}
+								<span>
+									{country.name}{index < movie_data.production_countries.length - 1 ? ', ' : ''}
+								</span>
+							{/each}
+						</dd>
+					</div>
+				</dl>
+			</div>
+		</div>
+	</section>
+
+	<!-- Recommendations Section -->
+	<section class="container p-4 mx-auto mt-8 rounded-lg">
+		<h2 class="text-xl font-bold md:text-2xl mb-4">Recommendations</h2>
+		
+		<div class="relative">
+			<!-- Scroll Buttons -->
+			<button
+				class="absolute z-10 left-0 top-1/2 -translate-y-1/2 bg-black bg-opacity-60 text-white p-2 rounded-full hover:bg-opacity-80 transition-all"
+				onclick={() => scrollLeft(recommendationsScrollRef)}
+			>
+				<ArrowLeft/>
+			</button>
+			<button
+				class="absolute z-10 right-0 top-1/2 -translate-y-1/2 bg-black bg-opacity-60 text-white p-2 rounded-full hover:bg-opacity-80 transition-all"
+				onclick={() => scrollRight(recommendationsScrollRef)}
+			>
+				<ArrowRight/>
+			</button>
+
+			<div
+				bind:this={recommendationsScrollRef}
+				class="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth px-8 py-2"
+				in:fade
+			>
+				{#each recommendation_data.results as movie}
+					<div class="flex-shrink-0 w-[160px]">
+						<MovieCard
+							id={movie.id}
+							poster_path={movie.poster_path}
+							title={movie.title}
+							vote_average={movie.vote_average}
+							release_date={movie.release_date}
+							genre_ids={movie.genre_ids}
+						/>
+					</div>
+				{/each}
+			</div>
+		</div>
+	</section>
+</div>
+
+<style>
+	.scrollbar-hide::-webkit-scrollbar {
+		display: none;
+	}
+	.scrollbar-hide {
+		-ms-overflow-style: none; /* IE and Edge */
+		scrollbar-width: none; /* Firefox */
+	}
+</style>

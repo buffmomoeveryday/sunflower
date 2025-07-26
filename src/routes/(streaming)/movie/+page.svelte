@@ -16,7 +16,6 @@
 	let mySeriesWatchlist = $state([]);
 	let myMoiveWatchlist = $state([]);
 
-
 	async function loadMovieWatchlist(user_id) {
 		try {
 			const response = await fetch(`/api/movie/watchlist/list`, {
@@ -55,8 +54,6 @@
 		}
 	}
 
-	
-
 	onMount(() => {
 		if (user) {
 			// loadSeriesWatchlist();
@@ -66,7 +63,6 @@
 </script>
 
 <div class="min-h-screen p-4 text-white bg-black">
-
 	<!-- My Watchlist Section -->
 	<section class="container p-4 mx-auto mt-6 rounded-lg" in:fade>
 		{#if myMoiveWatchlist.length > 0}
@@ -98,14 +94,13 @@
 			<div
 				class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
 			>
-			
 				{#each newReleases.results as movie}
 					<MovieCard {...movie} />
 				{/each}
 			</div>
 		{/if}
 	</section>
-    
+
 	<!-- Popular Movies Section -->
 	<section class="container p-4 mx-auto mt-6 rounded-lg">
 		{#if popularMovies}
@@ -119,6 +114,4 @@
 			</div>
 		{/if}
 	</section>
-
-
 </div>

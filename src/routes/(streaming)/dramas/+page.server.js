@@ -32,12 +32,12 @@ export async function load({ params }) {
 
 	return {
 		// Korean content
-		"trendingSeries":koreanTrendingSeries,
-		"topRatedSeries":koreanTopRatedSeries,
-		"popularSeries":koreanPopularSeries,
+		trendingSeries: koreanTrendingSeries,
+		topRatedSeries: koreanTopRatedSeries,
+		popularSeries: koreanPopularSeries
 		// koreanKeywordResults,
-        // koreanLanguageSeries,
-        // 
+		// koreanLanguageSeries,
+		//
 		// trendingSeries,
 		// topRatedSeries,
 		// popularSeries

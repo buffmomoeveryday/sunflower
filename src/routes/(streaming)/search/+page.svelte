@@ -22,7 +22,7 @@
 	const searchMovie = async (event, page = 1) => {
 		event?.preventDefault();
 		if (!search.trim()) return;
-		
+
 		loading = true;
 		errorMessage = '';
 
@@ -45,23 +45,23 @@
 			}
 			const json = await response.json();
 
-			console.log(json)
+			console.log(json);
 
 			if (json.success) {
 				movieResults = json.searchResults;
 				totalPages = json.total_pages;
 				currentPage = json.current_page;
 
-				const searchEntry = { 
-					query: search.trim(), 
-					type: videoType, 
-					timestamp: Date.now() 
+				const searchEntry = {
+					query: search.trim(),
+					type: videoType,
+					timestamp: Date.now()
 				};
-				
+
 				previousSearches = previousSearches.filter(
-					entry => !(entry.query === search.trim() && entry.type === videoType)
+					(entry) => !(entry.query === search.trim() && entry.type === videoType)
 				);
-				
+
 				previousSearches = [searchEntry, ...previousSearches];
 				if (previousSearches.length > 8) {
 					previousSearches = previousSearches.slice(0, 8);
@@ -103,11 +103,15 @@
 	};
 
 	const getTypeLabel = (type) => {
-		switch(type) {
-			case 'movie': return 'Movie';
-			case 'tv': return 'Series';
-			case 'anime': return 'Anime';
-			default: return type;
+		switch (type) {
+			case 'movie':
+				return 'Movie';
+			case 'tv':
+				return 'Series';
+			case 'anime':
+				return 'Anime';
+			default:
+				return type;
 		}
 	};
 
@@ -117,7 +121,7 @@
 		const minutes = Math.floor(diff / 60000);
 		const hours = Math.floor(diff / 3600000);
 		const days = Math.floor(diff / 86400000);
-		
+
 		if (days > 0) return `${days}d ago`;
 		if (hours > 0) return `${hours}h ago`;
 		if (minutes > 0) return `${minutes}m ago`;
@@ -143,7 +147,6 @@
 			totalPages = 1;
 			errorMessage = '';
 		}
-		
 	});
 </script>
 
@@ -155,7 +158,9 @@
 				{videoType === 'anime' ? '🎌 Anime' : videoType === 'movie' ? '🎬 Movie' : '📺 Series'} Search
 			</h1>
 			<p class="text-gray-400">
-				{videoType === 'anime' ? 'Discover anime from AniList' : 'Discover movies and series from TMDB'}
+				{videoType === 'anime'
+					? 'Discover anime from AniList'
+					: 'Discover movies and series from TMDB'}
 			</p>
 		</div>
 
@@ -170,7 +175,9 @@
 					<div class="md:col-span-6">
 						<label class="block text-sm font-medium text-gray-300 mb-2">Search Query</label>
 						<div class="relative">
-							<Search class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+							<Search
+								class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"
+							/>
 							<input
 								type="text"
 								bind:value={search}
@@ -215,7 +222,9 @@
 							class="w-full p-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 text-white rounded-xl font-medium transition-all transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed flex items-center justify-center gap-2"
 						>
 							{#if loading}
-								<div class="w-5 h-5 border-2 border-white rounded-full animate-spin border-t-transparent"></div>
+								<div
+									class="w-5 h-5 border-2 border-white rounded-full animate-spin border-t-transparent"
+								></div>
 								Searching...
 							{:else}
 								<Search class="w-5 h-5" />
@@ -229,7 +238,7 @@
 				<div class="mt-4 flex justify-center">
 					<button
 						type="button"
-						onclick={() => showFilters = !showFilters}
+						onclick={() => (showFilters = !showFilters)}
 						class="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
 					>
 						<Filter class="w-4 h-4" />
@@ -319,16 +328,24 @@
 		{#if movieResults.length > 0}
 			<div class="mb-8">
 				<h2 class="text-2xl font-bold text-white mb-4">
-					Search Results ({movieResults.length} {movieResults.length === 1 ? 'result' : 'results'})
+					Search Results ({movieResults.length}
+					{movieResults.length === 1 ? 'result' : 'results'})
 				</h2>
-				<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+				<div
+					class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8"
+				>
 					{#each movieResults.filter((movie) => movie.poster_path || movie.image || movie.coverImage) as movie}
 						<div class="flex justify-center">
 							{#if videoType === 'movie'}
 								<MovieCard {...movie} />
 							{:else if videoType === 'anime'}
-
-								<AnimeCard id={movie.id} name={movie.name} vote={movie.vote_average} poster={movie.image} startDate={movie.first_air_date}/>
+								<AnimeCard
+									id={movie.id}
+									name={movie.name}
+									vote={movie.vote_average}
+									poster={movie.image}
+									startDate={movie.first_air_date}
+								/>
 							{:else}
 								<SeriesCard {...movie} />
 							{/if}
@@ -348,7 +365,9 @@
 		{#if loading}
 			<div class="text-center py-12">
 				<div class="inline-flex items-center gap-3 text-gray-400">
-					<div class="w-8 h-8 border-2 border-gray-400 rounded-full animate-spin border-t-transparent"></div>
+					<div
+						class="w-8 h-8 border-2 border-gray-400 rounded-full animate-spin border-t-transparent"
+					></div>
 					<span class="text-lg">Searching {getTypeLabel(videoType).toLowerCase()}s...</span>
 				</div>
 			</div>
@@ -366,22 +385,25 @@
 						>
 							<MoveLeft class="w-5 h-5" />
 						</button>
-						
+
 						<div class="flex items-center space-x-2">
-							{#each Array.from({length: Math.min(5, totalPages)}, (_, i) => {
+							{#each Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
 								const start = Math.max(1, currentPage - 2);
 								const end = Math.min(totalPages, start + 4);
 								return start + i;
-							}).filter(page => page <= totalPages) as page}
+							}).filter((page) => page <= totalPages) as page}
 								<button
 									onclick={() => changePage(page)}
-									class="px-3 py-1 rounded-lg text-sm font-medium transition-all {currentPage === page ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'}"
+									class="px-3 py-1 rounded-lg text-sm font-medium transition-all {currentPage ===
+									page
+										? 'bg-blue-600 text-white'
+										: 'text-gray-400 hover:text-white hover:bg-gray-700'}"
 								>
 									{page}
 								</button>
 							{/each}
 						</div>
-						
+
 						<button
 							onclick={() => changePage(currentPage + 1)}
 							disabled={currentPage === totalPages}
@@ -390,7 +412,7 @@
 							<MoveRight class="w-5 h-5" />
 						</button>
 					</div>
-					
+
 					<div class="text-center mt-2 text-sm text-gray-400">
 						Page {currentPage} of {totalPages}
 					</div>

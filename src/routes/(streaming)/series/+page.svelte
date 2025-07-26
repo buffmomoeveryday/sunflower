@@ -11,11 +11,11 @@
 
 	let trendingSeries = data.trendingSeries;
 	let topRatedSeries = data.topRatedSeries;
-	let popularSeries = data.popularSeries
-	
-	let airingTodaySeriesScrollRef =$state();
-	let topRatedSeriesScrollRef=$state();
-	let popularSeriesScrollRef=$state();
+	let popularSeries = data.popularSeries;
+
+	let airingTodaySeriesScrollRef = $state();
+	let topRatedSeriesScrollRef = $state();
+	let popularSeriesScrollRef = $state();
 
 	async function loadSeriesWatchlist(user_id) {
 		try {
@@ -56,13 +56,10 @@
 		}
 	});
 
-	import {ArrowRight,ArrowLeft} from 'lucide-svelte'
-
-
+	import { ArrowRight, ArrowLeft } from 'lucide-svelte';
 </script>
 
 <div class="min-h-screen p-4 text-white bg-black">
-	
 	<!-- My Watchlist Section -->
 	{#if mySeriesWatchlist.length > 0}
 		<section class="container p-4 mx-auto mt-6 rounded-lg">
@@ -93,7 +90,7 @@
 	<!-- Trending Section -->
 	<section class="container p-4 mx-auto mt-8 rounded-lg">
 		{#if trendingSeries}
-			<h2 class="text-xl font-bold md:text-2xl mb-2">Popular Series </h2>
+			<h2 class="text-xl font-bold md:text-2xl mb-2">Popular Series</h2>
 
 			<div class="relative">
 				<!-- Scroll Buttons -->
@@ -101,20 +98,19 @@
 					class="absolute z-10 left-0 top-1/2 -translate-y-1/2 bg-black bg-opacity-60 text-white p-2 rounded-full hover:bg-opacity-80"
 					onclick={() => scrollLeft(airingTodaySeriesScrollRef)}
 				>
-					<ArrowLeft/>
+					<ArrowLeft />
 				</button>
 				<button
 					class="absolute z-10 right-0 top-1/2 -translate-y-1/2 bg-black bg-opacity-60 text-white p-2 rounded-full hover:bg-opacity-80"
 					onclick={() => scrollRight(airingTodaySeriesScrollRef)}
 				>
-					<ArrowRight/>
+					<ArrowRight />
 				</button>
 
 				<div
 					bind:this={airingTodaySeriesScrollRef}
 					class="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth px-8 py-2"
 				>
-
 					{#each popularSeries.results as series}
 						<div class="flex-shrink-0 w-[160px]">
 							<SeriesCard {...series} />
@@ -135,20 +131,19 @@
 					class="absolute z-10 left-0 top-1/2 -translate-y-1/2 bg-black bg-opacity-60 text-white p-2 rounded-full hover:bg-opacity-80"
 					onclick={() => scrollLeft(topRatedSeriesScrollRef)}
 				>
-					<ArrowLeft/>
+					<ArrowLeft />
 				</button>
 				<button
 					class="absolute z-10 right-0 top-1/2 -translate-y-1/2 bg-black bg-opacity-60 text-white p-2 rounded-full hover:bg-opacity-80"
 					onclick={() => scrollRight(topRatedSeriesScrollRef)}
 				>
-					<ArrowRight/>
+					<ArrowRight />
 				</button>
 
 				<div
 					bind:this={topRatedSeriesScrollRef}
 					class="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth px-8 py-2"
 				>
-
 					{#each topRatedSeries.results as series}
 						<div class="flex-shrink-0 w-[160px]">
 							<SeriesCard {...series} />
@@ -161,7 +156,6 @@
 
 	<section class="container p-4 mx-auto mt-8 rounded-lg">
 		{#if popularSeries}
-			
 			<h2 class="text-xl font-bold md:text-2xl mb-2">Trending</h2>
 			<div class="relative">
 				<!-- Scroll Buttons -->
@@ -169,20 +163,19 @@
 					class="absolute z-10 left-0 top-1/2 -translate-y-1/2 bg-black bg-opacity-60 text-white p-2 rounded-full hover:bg-opacity-80"
 					onclick={() => scrollLeft(popularSeriesScrollRef)}
 				>
-					<ArrowLeft/>
+					<ArrowLeft />
 				</button>
 				<button
 					class="absolute z-10 right-0 top-1/2 -translate-y-1/2 bg-black bg-opacity-60 text-white p-2 rounded-full hover:bg-opacity-80"
 					onclick={() => scrollRight(popularSeriesScrollRef)}
 				>
-					<ArrowRight/>
+					<ArrowRight />
 				</button>
 
 				<div
 					bind:this={popularSeriesScrollRef}
 					class="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth px-8 py-2"
 				>
-
 					{#each topRatedSeries.results as series}
 						<div class="flex-shrink-0 w-[160px]">
 							<SeriesCard {...series} />
@@ -192,7 +185,6 @@
 			</div>
 		{/if}
 	</section>
-	
 </div>
 
 <style>

@@ -1,6 +1,5 @@
 async function fetchAnimeData(anime_id) {
-
-    const query = `
+	const query = `
       query ($id: Int) {
         Media(id: $id, type: ANIME) {
           id
@@ -99,31 +98,28 @@ async function fetchAnimeData(anime_id) {
       }
     `;
 
-    try {
-      const res = await fetch('https://graphql.anilist.co', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { id: anime_id } })
-      });
+	try {
+		const res = await fetch('https://graphql.anilist.co', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ query, variables: { id: anime_id } })
+		});
 
-      const data = await res.json();
+		const data = await res.json();
 
+		if (data.data && data.data.Media) {
+			console.log(data.data.Media);
+			return data.data.Media;
+		} else {
+			console.error('Error fetching anime data:', data.errors);
+		}
+	} catch (error) {
+		console.error('Network error:', error);
+	}
+}
 
-      if (data.data && data.data.Media) {
-      
-        console.log(data.data.Media)
-        return data.data.Media
-      } else {
-        console.error("Error fetching anime data:", data.errors);
-      }
-    } catch (error) {
-      console.error("Network error:", error);
-    }
-  }
-
-
-export async function load({ params }){
-    let anime_id = params.anime_id;
-    let anime_data = await fetchAnimeData(anime_id)
-    return {anime_data}
+export async function load({ params }) {
+	let anime_id = params.anime_id;
+	let anime_data = await fetchAnimeData(anime_id);
+	return { anime_data };
 }

@@ -158,7 +158,7 @@
 		{#if popularMovies}
 			<h2 class="text-xl font-bold md:text-2xl">Popular Movies</h2>
 			<div
-			class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+				class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
 			>
 				{#each popularMovies.results as movie}
 					<MovieCard {...movie} />

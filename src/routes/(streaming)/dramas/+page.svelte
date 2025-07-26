@@ -16,7 +16,7 @@
 
 	// Refs for scrollable sections
 	let airingTodaySeriesScrollRef = $state();
-	let topRatedSeriesScrollRef=$state();
+	let topRatedSeriesScrollRef = $state();
 	let popularSeriesScrollRef = $state();
 
 	async function loadSeriesWatchlist() {
@@ -68,7 +68,9 @@
 				<span class="text-sm text-gray-400">{mySeriesWatchlist.length} items</span>
 			</div>
 			<div class="mt-4 overflow-x-auto scrollbar-hide">
-				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+				<div
+					class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+				>
 					{#each mySeriesWatchlist as series}
 						<DramaCard
 							id={series.tmdb_id}

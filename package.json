@@ -34,9 +34,6 @@
 		"vite": "^6.0.0"
 	},
 	"dependencies": {
-		"@consumet/extensions": "^1.8.1",
-		"crypto-js": "^4.2.0",
-		"cryptojs": "^2.5.3",
 		"pocketbase": "^0.25.1",
 		"svelte-sonner": "^0.3.28",
 		"tailwind-scrollbar-hide": "^4.0.0"

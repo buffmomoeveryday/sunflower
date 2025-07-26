@@ -1,11 +1,5 @@
 <script>
-	let {
-		title,
-		description,
-		rating,
-		genre,
-		year,
-	} = $props();
+	let { title, description, rating, genre, year } = $props();
 </script>
 
 <div class="space-y-4">

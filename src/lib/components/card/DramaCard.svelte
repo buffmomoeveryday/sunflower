@@ -1,8 +1,5 @@
 <script>
-	import { goto } from "$app/navigation";
-	import { redirect } from "@sveltejs/kit";
-
-	let { id, poster_path, title, vote_average, release_date, genre_ids = [] } = $props();
+	let { id, poster_path, name, vote_average, first_air_date, number_of_seasons } = $props();
 	
 	// Format rating with proper handling for missing values
 	const formatRating = (rating) => {
@@ -24,25 +21,31 @@
 		if (!date) return '';
 		return new Date(date).getFullYear();
 	};
-
-
-
-
-
+	
+	// Format seasons text
+	const getSeasonsText = (seasons) => {
+		if (!seasons || seasons === 0) return '';
+		return seasons === 1 ? '1 Season' : `${seasons} Seasons`;
+	};
+	
 	let rating = formatRating(vote_average);
 	let ratingColor = getRatingColor(vote_average);
-	let year = getYear(release_date);
+	let year = getYear(first_air_date);
+	let seasonsText = getSeasonsText(number_of_seasons);
 </script>
 
 <div class="group relative w-full max-w-sm mx-auto">
 	<!-- Main card container -->
-	<div class="relative overflow-hidden bg-gray-900/80 backdrop-blur-sm rounded-2xl shadow-lg transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-2 border border-gray-800/50">
-		<a href="/movie/{id}" class="block text-white no-underline">
+	<div class="relative overflow-hidden bg-gray-900/80 backdrop-blur-sm rounded-2xl shadow-lg transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-2 border border-gray-800/50">
+		<a href="/dramas/{id}" class="block text-white no-underline">
 			<!-- Poster container with aspect ratio -->
 			<div class="relative w-full aspect-[2/3] overflow-hidden">
 				<img
-					src="https://image.tmdb.org/t/p/w500/{poster_path}"
-					alt={title}
+					src={poster_path 
+						? `https://image.tmdb.org/t/p/w500/${poster_path}` 
+						: 'https://images.unsplash.com/photo-1489599006549-b6f90d34e2d3?w=400&h=600&fit=crop&crop=center'
+					}
+					alt={name}
 					class="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
 					loading="lazy"
 				/>
@@ -64,6 +67,20 @@
 					</div>
 				</div>
 				
+				<!-- Seasons badge (bottom left) -->
+				{#if seasonsText}
+					<div class="absolute bottom-3 left-3 z-10">
+						<div class="bg-black/70 backdrop-blur-sm rounded-full px-3 py-1 shadow-lg">
+							<span class="text-white text-xs font-medium flex items-center gap-1">
+								<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+								</svg>
+								{seasonsText}
+							</span>
+						</div>
+					</div>
+				{/if}
+				
 				<!-- Play button overlay (appears on hover) -->
 				<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
 					<div class="bg-white/20 backdrop-blur-sm rounded-full p-4 transform scale-75 group-hover:scale-100 transition-transform duration-300">
@@ -77,11 +94,11 @@
 			<!-- Content section -->
 			<div class="p-4 space-y-2">
 				<!-- Title -->
-				<h3 class="text-white font-semibold text-base leading-tight line-clamp-2 group-hover:text-blue-400 transition-colors duration-300">
-					{title}
+				<h3 class="text-white font-semibold text-base leading-tight line-clamp-2 group-hover:text-purple-400 transition-colors duration-300">
+					{name}
 				</h3>
 				
-				<!-- Movie details -->
+				<!-- Series details -->
 				<div class="flex items-center justify-between text-sm text-gray-400">
 					{#if year}
 						<span class="flex items-center gap-1">
@@ -92,20 +109,22 @@
 						</span>
 					{/if}
 					
-					<!-- Movie icon -->
+					<!-- TV Series icon -->
 					<span class="flex items-center gap-1">
 						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m0 0V1a1 1 0 011-1h2a1 1 0 011 1v18a1 1 0 01-1 1H4a1 1 0 01-1-1V1a1 1 0 011-1h2a1 1 0 011 1v3m0 0h8m-8 0V4a1 1 0 011-1h6a1 1 0 011 1v0M7 8h10"/>
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
 						</svg>
-						Movie
+						Series
 					</span>
 				</div>
 				
-		
+
 			</div>
 		</a>
 	</div>
 	
+	<!-- Subtle glow effect -->
+	<div class="absolute -inset-0.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10 blur-sm"></div>
 </div>
 
 <style>

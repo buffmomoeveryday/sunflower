@@ -5,6 +5,7 @@
     let { data } = $props();
     let seriesDetailData = data.seriesDetailData;
     let user = data?.user;
+
     // Reactive state
     let selectedSource = $state(0);
     let selectedSeason = $state(1);
@@ -18,10 +19,10 @@
     const STORAGE_KEY = `series_${seriesDetailData.id}_progress`;
     const HOME_STORAGE_KEY = 'homepage_series';
     const SERIES_ADDED_KEY = `series_${seriesDetailData.id}_added`;
-
+   
     // Derived State
     let iframeSources = $derived([
-        `https://vidsrc.cc/v2/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}?progress=120"`,
+        `https://vidsrc.cc/v2/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
         `https://vidsrc.icu/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
         `https://embed.su/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
         `https://player.videasy.net/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
@@ -33,8 +34,9 @@
 		`https://vidlink.pro/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}` ,//supports events
 		`https://embed.rgshows.me/api/2/tv/?id=${seriesDetailData.id}&s=${selectedSeason}&e=${selectedSeason}`,
 		`https://embed.rgshows.me/api/3/tv/?id=${seriesDetailData.id}&s=${selectedSeason}&e=${selectedEpisode}`,
-
+        `https://drama.autoembed.cc/embed/kissed-by-the-rain-2024-episode-11`
     ]);
+
     let isNextEpisodeAvailable = $derived(() => {
         const currentEpisodeIndex = selectedEpisode - 1;
         if (currentEpisodeIndex + 1 < episodes.length) {
@@ -44,11 +46,13 @@
             return selectedSeason < seriesDetailData.seasons.length;
         }
     });
+    
     const isDisabled = $derived.by(()=>{
         !isNextEpisodeAvailable ||
         (selectedSeason >= seriesDetailData.seasons.length &&
          selectedEpisode >= episodes.length);
     })
+    
     async function updateProgressInDatabase() {
         if (!isAddedToHome) return;
         if (!user) return;
@@ -574,6 +578,7 @@
                                 <p class="text-white">{episodes[selectedEpisode - 1].air_date}</p>
                             </div>
                             <div>
+                                
                                 <h4 class="flex items-center gap-2 mb-2 text-sm font-semibold text-gray-400 uppercase tracking-wide">
                                     <Star size={14} />
                                     Episode Rating

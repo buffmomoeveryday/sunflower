@@ -4,6 +4,7 @@ async function fetchAnimeData(anime_id) {
       query ($id: Int) {
         Media(id: $id, type: ANIME) {
           id
+          idMal
           title {
             romaji
             english
@@ -106,7 +107,11 @@ async function fetchAnimeData(anime_id) {
       });
 
       const data = await res.json();
+
+
       if (data.data && data.data.Media) {
+      
+        console.log(data.data.Media)
         return data.data.Media
       } else {
         console.error("Error fetching anime data:", data.errors);

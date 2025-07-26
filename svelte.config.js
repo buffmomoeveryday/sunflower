@@ -21,6 +21,9 @@ const config = {
 		alias: {
 			"@/*": "./path/to/lib/*",
 		}
+	},
+	vitePlugin: {
+		inspector:true
 	}
 };
 

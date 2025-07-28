@@ -146,23 +146,69 @@
 	});
 </script>
 
-<div class="flex flex-col min-h-screen text-white bg-black">
-	<!-- Video Player Section - Maintains 16:9 Aspect Ratio -->
-	<section class="flex-1 flex flex-col p-4 md:p-6 min-h-0">
-		<!-- Title -->
-		<div class="mb-4 flex-shrink-0">
-			<h1 class="text-xl md:text-2xl font-bold text-white">
-				{movie_data.title || movie_data.original_title}
-			</h1>
-			<p class="text-gray-400 text-sm">{movie_data.release_date}</p>
+<div class="flex flex-col min-h-screen text-white bg-black overflow-hidden">
+	<!-- Single Screen Layout -->
+	<div class="flex flex-1 p-4 md:p-6 gap-6 min-h-0">
+		<!-- Left Side - Movie Poster and Details -->
+		<div class="flex-shrink-0 w-80">
+			<!-- Movie Title -->
+			<div class="mb-4">
+				<h1 class="text-xl md:text-2xl font-bold text-white leading-tight">
+					{movie_data.title || movie_data.original_title}
+				</h1>
+				<p class="text-gray-400 text-sm">{movie_data.release_date}</p>
+			</div>
+
+			<!-- Movie Poster -->
+			<div class="mb-6">
+				<img
+					src={`https://image.tmdb.org/t/p/w500${movie_data.poster_path}`}
+					alt={`${movie_data.title} Poster`}
+					class="w-full rounded-lg shadow-lg border border-gray-700"
+				/>
+			</div>
+
+			<!-- Add to Home Button -->
+			{#if user}
+				<button
+					class="w-full flex items-center justify-center gap-2 p-3 mb-4 transition-colors duration-200 bg-black border border-gray-700 rounded-lg hover:bg-gray-800"
+					onclick={toggleHomeStatus}
+					title={isAddedToHome ? 'Remove from Home' : 'Add to Home'}
+				>
+					<Heart
+						size={20}
+						color={isAddedToHome ? '#fb2c36' : 'white'}
+						fill={isAddedToHome ? '#fb2c36' : 'none'}
+					/>
+					<span class="text-sm">{isAddedToHome ? 'Added to Home' : 'Add to Home'}</span>
+				</button>
+			{/if}
+
+			<!-- Movie Overview -->
+			<div class="bg-gray-900 rounded-lg p-4 mb-4">
+				<h3 class="text-lg font-semibold mb-2">Overview</h3>
+				<p class="text-gray-300 text-sm leading-relaxed line-clamp-6">{movie_data.overview}</p>
+			</div>
+
+			<!-- Genres -->
+			<div class="bg-gray-900 rounded-lg p-4">
+				<h4 class="mb-3 text-sm font-semibold text-gray-400 uppercase tracking-wide">Genres</h4>
+				<div class="flex flex-wrap gap-2">
+					{#each movie_data.genres as genre}
+						<span
+							class="px-2 py-1 text-xs bg-gray-800 border border-gray-700 rounded-full text-gray-300"
+						>
+							{genre.name}
+						</span>
+					{/each}
+				</div>
+			</div>
 		</div>
 
-		<!-- Aspect Ratio Container for Video -->
-		<div class="relative w-full aspect-video mb-4">
-			<!-- This enforces 16:9 -->
-			<div
-				class="absolute inset-0 bg-gray-900 border-2 border-gray-700 rounded-lg shadow-lg overflow-hidden"
-			>
+		<!-- Right Side - Video Player -->
+		<div class="flex-1 flex flex-col min-h-0">
+			<!-- Video Player Container -->
+			<div class="flex-1 relative bg-gray-900 border-2 border-gray-700 rounded-lg shadow-lg overflow-hidden">
 				<iframe
 					src={iframeSources[selectedSource]}
 					class="w-full h-full"
@@ -172,207 +218,38 @@
 					scrolling="no"
 				></iframe>
 			</div>
-		</div>
 
-		<!-- Player Controls -->
-		<div
-			class="flex flex-wrap items-center justify-between gap-4 p-4 bg-gray-900 rounded-lg flex-shrink-0"
-		>
-			<!-- Server Selection -->
-			<div class="flex items-center gap-2 flex-wrap">
-				<span class="text-sm font-medium text-gray-400">Server:</span>
-				{#each iframeSources as source, index}
-					<button
-						class={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-							index === selectedSource
-								? 'bg-white text-black'
-								: 'bg-gray-700 text-white hover:bg-gray-600'
-						}`}
-						onclick={() => changeSource(index)}
-					>
-						{index + 1}
-					</button>
-				{/each}
-			</div>
-			<!-- Add to Home Button (Mobile/Tablet) -->
-			{#if user}
-				<button
-					class="md:hidden flex items-center gap-2 p-2 text-sm transition-colors duration-200 bg-black border border-gray-700 rounded-lg hover:bg-gray-800"
-					onclick={toggleHomeStatus}
-					title={isAddedToHome ? 'Remove from Home' : 'Add to Home'}
-				>
-					<Heart
-						size={16}
-						color={isAddedToHome ? '#fb2c36' : 'white'}
-						fill={isAddedToHome ? '#fb2c36' : 'none'}
-					/>
-					<span>{isAddedToHome ? 'Added' : 'Add'}</span>
-				</button>
-			{/if}
-		</div>
-	</section>
-
-	<!-- Movie Details Section - Scrollable with limited height -->
-	<section class="p-4 md:p-6 space-y-6 overflow-y-auto flex-shrink-0 max-h-[35vh] no-scrollbar">
-		<!-- Adjust max-h as needed -->
-		<div class="p-6 bg-gray-900 rounded-lg">
-			<div class="flex flex-col gap-6 md:flex-row">
-				<img
-					src={`https://image.tmdb.org/t/p/w500${movie_data.poster_path}`}
-					alt={`${movie_data.title} Poster`}
-					class="w-40 rounded-lg shadow-lg md:w-48 border border-gray-700 self-start"
-				/>
-
-				<div class="flex-1">
-					<div class="flex flex-wrap items-start justify-between gap-2 mb-4">
-						<!-- Title and Release Date moved above player -->
-						<!-- Add to Home Button (Desktop) -->
-						{#if user}
-							<button
-								class="hidden md:flex items-center gap-2 p-2 transition-colors duration-200 bg-black border border-gray-700 rounded-lg hover:bg-gray-800"
-								onclick={toggleHomeStatus}
-								title={isAddedToHome ? 'Remove from Home' : 'Add to Home'}
-							>
-								<Heart
-									size={20}
-									color={isAddedToHome ? '#fb2c36' : 'white'}
-									fill={isAddedToHome ? '#fb2c36' : 'none'}
-								/>
-								<span class="text-sm">{isAddedToHome ? 'Added to Home' : 'Add to Home'}</span>
-							</button>
-						{/if}
-					</div>
-					<p class="text-gray-300 leading-relaxed mb-6">{movie_data.overview}</p>
-
-					<!-- Genres -->
-					<div class="mt-4">
-						<h4 class="mb-3 text-sm font-semibold text-gray-400 uppercase tracking-wide">Genres</h4>
-						<div class="flex flex-wrap gap-2">
-							{#each movie_data.genres as genre}
-								<span
-									class="px-3 py-1 text-sm bg-gray-800 border border-gray-700 rounded-full text-gray-300"
-								>
-									{genre.name}
-								</span>
-							{/each}
-						</div>
-					</div>
+			<!-- Server Selection Controls -->
+			<div class="mt-4 p-4 bg-gray-900 rounded-lg flex-shrink-0">
+				<div class="flex items-center gap-2 flex-wrap">
+					<span class="text-sm font-medium text-gray-400 mr-2">Server:</span>
+					{#each iframeSources as source, index}
+						<button
+							class={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+								index === selectedSource
+									? 'bg-white text-black'
+									: 'bg-gray-700 text-white hover:bg-gray-600'
+							}`}
+							onclick={() => changeSource(index)}
+						>
+							{index + 1}
+						</button>
+					{/each}
 				</div>
 			</div>
-
-			<!-- Production Details -->
-			<div class="mt-8 pt-6 border-t border-gray-800">
-				<h3 class="mb-4 text-xl font-bold">Production Details</h3>
-				<dl class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-					<div>
-						<dt class="text-gray-400 font-medium mb-1">Status</dt>
-						<dd class="text-white">{movie_data.status}</dd>
-					</div>
-					<div>
-						<dt class="text-gray-400 font-medium mb-1">Original Language</dt>
-						<dd class="text-white">{movie_data.original_language}</dd>
-					</div>
-					<div>
-						<dt class="text-gray-400 font-medium mb-1">Runtime</dt>
-						<dd class="text-white">{movie_data.runtime} minutes</dd>
-					</div>
-					<div>
-						<dt class="text-gray-400 font-medium mb-1">Budget</dt>
-						<dd class="text-white">${movie_data.budget?.toLocaleString() || 'N/A'}</dd>
-					</div>
-					<div>
-						<dt class="text-gray-400 font-medium mb-1">Revenue</dt>
-						<dd class="text-white">${movie_data.revenue?.toLocaleString() || 'N/A'}</dd>
-					</div>
-					<div>
-						<dt class="text-gray-400 font-medium mb-1">Production Companies</dt>
-						<dd class="text-white">
-							{#if movie_data.production_companies && movie_data.production_companies.length > 0}
-								{#each movie_data.production_companies as company, index}
-									<span>
-										{company.name}{index < movie_data.production_companies.length - 1 ? ', ' : ''}
-									</span>
-								{/each}
-							{:else}
-								N/A
-							{/if}
-						</dd>
-					</div>
-					<div class="md:col-span-2">
-						<dt class="text-gray-400 font-medium mb-1">Country of Origin</dt>
-						<dd class="text-white">
-							{#if movie_data.production_countries && movie_data.production_countries.length > 0}
-								{#each movie_data.production_countries as country, index}
-									<span>
-										{country.name}{index < movie_data.production_countries.length - 1 ? ', ' : ''}
-									</span>
-								{/each}
-							{:else}
-								N/A
-							{/if}
-						</dd>
-					</div>
-				</dl>
-			</div>
 		</div>
-	</section>
-
-	<!-- Recommendations Section -->
-	<!--      
-    <section class="p-4 md:p-6 flex-shrink-0">
-        <h2 class="text-xl font-bold md:text-2xl mb-4">Recommendations</h2>
-
-        <div class="relative">
-            <button
-                class="absolute z-10 left-0 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
-                onclick={() => scrollLeft(recommendationsScrollRef)}
-                aria-label="Scroll recommendations left"
-            >
-                <ArrowLeft size={20} />
-            </button>
-            <button
-                class="absolute z-10 right-0 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
-                onclick={() => scrollRight(recommendationsScrollRef)}
-                aria-label="Scroll recommendations right"
-            >
-                <ArrowRight size={20} />
-            </button>
-
-            <div
-                bind:this={recommendationsScrollRef}
-                class="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth px-8 py-2"
-                in:fade
-            >
-                {#if recommendation_data?.results?.length > 0}
-                    {#each recommendation_data.results as moviee (moviee.id)}
-        <div class="flex-shrink-0 w-[160px]">
-            <button
-            onclick={()=>{
-                throw redirect(`/movie/${moviee.id}`)
-            }}
-            >
-                <MovieCard
-                    id={moviee.id}
-                    poster_path={moviee.poster_path}
-                    title={moviee.title}
-                    vote_average={moviee.vote_average}
-                    release_date={moviee.release_date}
-                    genre_ids={moviee.genre_ids}
-                />
-        </button>
-
-            </div>
-                    {/each}
-                {:else}
-                    <p class="text-gray-500 italic py-4">No recommendations available.</p>
-                {/if}
-            </div>
-        </div>
-    </section> -->
+	</div>
 </div>
 
 <style>
-	ava .no-scrollbar::-webkit-scrollbar {
+	.line-clamp-6 {
+		display: -webkit-box;
+		-webkit-line-clamp: 6;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	.no-scrollbar::-webkit-scrollbar {
 		display: none;
 	}
 	.no-scrollbar {

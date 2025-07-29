@@ -11,7 +11,7 @@
 	let mobileMenuOpen = $state(false);
 
 	const navItems = $derived([
-		{ name: 'Home', path: '', icon: 'home' },
+		{ name: 'Home', path: '/', icon: 'home' },
 		{ name: 'Movies', path: '/movie', icon: 'home' },
 		{ name: 'Series', path: '/series', icon: 'tv' },
 		{ name: 'Anime', path: '/anime', icon: 'search' },
@@ -28,6 +28,7 @@
 		if (dropdown && !dropdown.contains(event.target)) {
 			dropdownOpen = false;
 		}
+
 	}
 
 	// Listen for clicks on the window

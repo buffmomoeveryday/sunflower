@@ -36,7 +36,7 @@
 		`https://vidsrc.cc/v2/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}?progress=120"`,
 		`https://vidsrc.icu/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
 		`https://embed.su/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
-		`https://player.videasy.net/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
+		`https://player.videasy.net/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`, //supports event
 		`https://player.autoembed.cc/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
 		`https://111movies.com/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`, //no
 		`https://vidjoy.pro/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
@@ -46,6 +46,7 @@
 		`https://embed.rgshows.me/api/2/tv/?id=${seriesDetailData.id}&s=${selectedSeason}&e=${selectedSeason}`,
 		`https://embed.rgshows.me/api/3/tv/?id=${seriesDetailData.id}&s=${selectedSeason}&e=${selectedEpisode}`
 	]);
+	
 	let isNextEpisodeAvailable = $derived(() => {
 		const currentEpisodeIndex = selectedEpisode - 1;
 		if (currentEpisodeIndex + 1 < episodes.length) {
@@ -55,10 +56,12 @@
 			return selectedSeason < seriesDetailData.seasons.length;
 		}
 	});
-	const isDisabled = $derived.by(() => {
+
+	let isDisabled = $derived.by(() => {
 		!isNextEpisodeAvailable ||
 			(selectedSeason >= seriesDetailData.seasons.length && selectedEpisode >= episodes.length);
 	});
+
 	async function updateProgressInDatabase() {
 		if (!isAddedToHome) return;
 		if (!user) return;
@@ -85,6 +88,8 @@
 			toast.error('Failed to save progress');
 		}
 	}
+
+
 	async function callWatchlistAPI(action) {
 		if (!user) return;
 		try {
@@ -126,10 +131,13 @@
 			toast.error('An error occurred');
 		}
 	}
+
+
 	function checkIfSeriesInHome() {
 		const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
 		return storedSeries.some((series) => series.id === seriesDetailData.id);
 	}
+
 	function storeSeriesDataOnceWithDelay() {
 		const isSeriesAlreadyAdded = localStorage.getItem(SERIES_ADDED_KEY);
 		if (!isSeriesAlreadyAdded) {
@@ -152,6 +160,7 @@
 			}, 4000);
 		}
 	}
+
 	async function toggleHomeStatus() {
 		const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
 		if (isAddedToHome) {
@@ -177,6 +186,7 @@
 			if (data.user.id) await callWatchlistAPI('add');
 		}
 	}
+
 	async function fetchEpisodes(seasonNumber) {
 		selectedSeason = seasonNumber;
 		try {
@@ -194,12 +204,14 @@
 			console.error('Error fetching episodes:', error);
 		}
 	}
+
 	async function selectEpisode(episodeId) {
 		selectedEpisode = episodeId;
 		isPlayerLoading = true; // Set loading state when changing episodes
 		saveProgressAndSelectedSource();
 		await updateProgressInDatabase();
 	}
+
 	function saveProgressAndSelectedSource() {
 		localStorage.setItem(
 			STORAGE_KEY,
@@ -210,6 +222,8 @@
 			})
 		);
 	}
+
+
 	function loadProgressAndSelectedSource() {
 		const progress = localStorage.getItem(STORAGE_KEY);
 		if (progress) {
@@ -219,6 +233,7 @@
 			selectedSource = source || 1;
 		}
 	}
+
 	function changeSource(index) {
 		selectedSource = index;
 		isPlayerLoading = true; // Set loading state when changing sources
@@ -227,6 +242,7 @@
 	function handleIframeLoad() {
 		isPlayerLoading = false; // Remove loading state when iframe loads
 	}
+	
 	async function getProgress() {
 		if (user) {
 			try {

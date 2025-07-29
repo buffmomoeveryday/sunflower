@@ -1,267 +1,278 @@
 <script>
-	import { Heart, ArrowLeft, ArrowRight } from 'lucide-svelte';
-	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
-	import { toast } from 'svelte-sonner';
-	import MovieCard from '$lib/components/card/MovieCard.svelte';
-	import { fade } from 'svelte/transition';
-	import { goto } from '$app/navigation';
-	import { redirect } from '@sveltejs/kit';
+    import { Heart } from 'lucide-svelte';
+    import { page } from '$app/stores';
+    import { onMount } from 'svelte';
+    import { toast } from 'svelte-sonner';
+    import { goto } from '$app/navigation';
 
-	let { data } = $props();
+    let { data } = $props();
+    let isAddedToHome = $state(false);
+    let user = data?.user;
+    let movie_data = data.movieData;
+    let movie_id = $page.params.movie_id;
+    let recommendation_data = data.recommendation_data;
 
-	let isAddedToHome = $state(false);
+    // Ensure movie_id is a clean string
+    const safeMovieId = String(movie_id).trim();
 
-	let user = data?.user;
-	let movie_data = data.movieData;
-	let movie_id = $page.params.movie_id;
-	let recommendation_data = data.recommendation_data;
+    let iframeSources = $state([
+        `https://vidsrc.icu/embed/movie/${safeMovieId}`,
+        `https://vidsrc.to/embed/movie/${safeMovieId}`,
+        `https://vidsrc.cc/v2/embed/movie/${safeMovieId}?autoPlay=true`,
+        `https://player.videasy.net/movie/${safeMovieId}`,
+        `https://player.autoembed.cc/embed/movie/${safeMovieId}`,
+        `https://111movies.com/movie/${safeMovieId}`,
+        `https://vidjoy.pro/embed/movie/${safeMovieId}`,
+        `https://mappletv.uk/watch/movie/${safeMovieId}`,
+        `https://embed.rgshows.me/api/3/movie/?id=${safeMovieId}`,
+        `https://vidfast.pro/movie/${safeMovieId}?autoPlay=true`,
+        `https://embed.rgshows.me/api/2/movie/?id=${safeMovieId}`
+    ]);
 
-	let playerEvent = $state(null);
-	let recommendationsScrollRef = $state();
+    let selectedSource = $state(0);
 
-	// --- String Interpolation Fixes ---
-	// Ensure movie_id is treated as a string and trimmed
-	const safeMovieId = String(movie_id).trim();
+    function changeSource(index) {
+        selectedSource = index;
+    }
 
-	let iframeSources = $state([
-		`https://vidsrc.icu/embed/movie/${safeMovieId}`,
-		`https://vidsrc.to/embed/movie/${safeMovieId}`,
-		`https://vidsrc.cc/v2/embed/movie/${safeMovieId}?autoPlay=true`,
-		`https://player.videasy.net/movie/${safeMovieId}`,
-		`https://player.autoembed.cc/embed/movie/${safeMovieId}`,
-		`https://111movies.com/movie/${safeMovieId}`,
-		`https://vidjoy.pro/embed/movie/${safeMovieId}`,
-		`https://mappletv.uk/watch/movie/${safeMovieId}`,
-		`https://embed.rgshows.me/api/3/movie/?id=${safeMovieId}`,
-		`https://vidfast.pro/movie/${safeMovieId}?autoPlay=true`,
-		`https://embed.rgshows.me/api/2/movie/?id=${safeMovieId}`
-	]);
+    const HOME_STORAGE_KEY = 'homepage_movies';
 
-	let selectedSource = $state(0);
+    async function fetchMovieWatchlistStatus() {
+        if (!user) return;
+        try {
+            const response = await fetch(`/api/movie/watchlist/get`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: user.id, tmdb_id: safeMovieId })
+            });
+            if (!response.ok) {
+                if (response.status === 404) {
+                    isAddedToHome = false;
+                    return;
+                }
+                throw new Error(`Failed to fetch watchlist status: ${response.statusText}`);
+            }
+            const data = await response.json();
+            isAddedToHome = !!data?.id;
+        } catch (error) {
+            console.error('Error fetching watchlist status:', error);
+            isAddedToHome = false;
+        }
+    }
 
-	function changeSource(index) {
-		selectedSource = index;
-	}
+    async function toggleHomeStatus() {
+        if (!user) return;
+        try {
+            const postData = {
+                user_id: user.id,
+                tmdb_id: movie_data.id,
+                title: movie_data.title,
+                poster_path: movie_data.poster_path,
+                average_ratings: movie_data.vote_average
+            };
 
-	function scrollLeft(ref) {
-		ref.scrollBy({ left: -400, behavior: 'smooth' });
-	}
+            const action = isAddedToHome ? 'remove' : 'add';
+            const method = action === 'add' ? 'POST' : 'DELETE';
 
-	function scrollRight(ref) {
-		ref.scrollBy({ left: 400, behavior: 'smooth' });
-	}
+            const response = await fetch('/api/movie/watchlist/save', {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(
+                    action === 'add'
+                        ? postData
+                        : { user_id: user.id, tmdb_id: movie_data.id }
+                )
+            });
 
-	const HOME_STORAGE_KEY = 'homepage_movies';
+            if (!response.ok) {
+                const result = await response.json();
+                throw new Error(result.message || `Failed to ${action} from watchlist`);
+            }
 
-	async function fetchMovieWatchlistStatus() {
-		if (!user) return;
-		try {
-			const response = await fetch(`/api/movie/watchlist/get`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ user_id: user.id, tmdb_id: safeMovieId }) // Use safeMovieId
-			});
+            const storedMovies = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
+            if (action === 'add') {
+                const movieToAdd = {
+                    id: movie_data.id,
+                    name: movie_data.title,
+                    poster_path: movie_data.poster_path,
+                    first_air_date: movie_data.release_date,
+                    vote_average: movie_data.vote_average,
+                    addedAt: new Date().toISOString()
+                };
+                if (!storedMovies.some(m => m.id === movie_data.id)) {
+                    storedMovies.push(movieToAdd);
+                    localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedMovies));
+                    toast.success('Added to Home');
+                    isAddedToHome = true;
+                }
+            } else {
+                const updatedMovies = storedMovies.filter(m => m.id !== movie_data.id);
+                localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(updatedMovies));
+                toast.success('Removed from Home');
+                isAddedToHome = false;
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Action failed. Try again.');
+        }
+    }
 
-			if (!response.ok) {
-				if (response.status === 404) {
-					isAddedToHome = false;
-					return;
-				}
-				throw new Error(`Failed to fetch movie watchlist status: ${response.statusText}`);
-			}
-
-			const data = await response.json();
-			isAddedToHome = !!data?.id;
-		} catch (error) {
-			console.error('Error fetching movie watchlist status:', error);
-			isAddedToHome = false;
-		}
-	}
-
-	async function toggleHomeStatus() {
-		if (!user) return;
-		try {
-			const postData = {
-				user_id: user.id,
-				tmdb_id: movie_data.id,
-				title: movie_data.title,
-				poster_path: movie_data.poster_path,
-				average_ratings: movie_data.vote_average
-			};
-
-			// Determine action based on current state
-			const action = isAddedToHome ? 'remove' : 'add';
-			let fetchOptions = {
-				method: action === 'add' ? 'POST' : 'POST', // Use DELETE endpoint
-				headers: { 'Content-Type': 'application/json' }
-			};
-
-			// Include data in body for POST, or potentially in body/params for DELETE (adjust API call as needed)
-			if (action === 'add') {
-				fetchOptions.body = JSON.stringify(postData);
-			} else if (action === 'remove') {
-				// Example: Send IDs in body for DELETE
-				fetchOptions.body = JSON.stringify({ user_id: user.id, tmdb_id: movie_data.id });
-			}
-
-			const response = await fetch('/api/movie/watchlist/save', fetchOptions);
-
-			if (!response.ok) {
-				const result = await response.json();
-				throw new Error(result.message || `Failed to ${action} from watchlist`);
-			}
-
-			if (action === 'add') {
-				const storedMovies = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
-				const moviesData = {
-					id: movie_data.id,
-					name: movie_data.title,
-					poster_path: movie_data.poster_path,
-					first_air_date: movie_data.release_date,
-					vote_average: movie_data.vote_average,
-					addedAt: new Date().toISOString()
-				};
-				storedMovies.push(moviesData);
-				localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedMovies));
-				toast.success('Added to the list');
-				isAddedToHome = true;
-			} else {
-				const storedMovies = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
-				const updatedMovies = storedMovies.filter((movie) => movie.id !== movie_data.id);
-				localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(updatedMovies));
-				toast.success('Removed from the list');
-				isAddedToHome = false;
-			}
-		} catch (error) {
-			console.error(error);
-			toast.error('Something went wrong');
-		}
-	}
-
-	onMount(() => {
-		if (user) {
-			fetchMovieWatchlistStatus();
-		}
-	});
+    onMount(() => {
+        if (user) {
+            fetchMovieWatchlistStatus();
+        }
+    });
 </script>
 
-<div class="flex flex-col min-h-screen text-white bg-black overflow-hidden">
-	<!-- Single Screen Layout -->
-	<div class="flex flex-1 p-4 md:p-6 gap-6 min-h-0">
-		<!-- Left Side - Movie Poster and Details -->
-		<div class="flex-shrink-0 w-80">
-			<!-- Movie Title -->
-			<div class="mb-4">
-				<h1 class="text-xl md:text-2xl font-bold text-white leading-tight">
-					{movie_data.title || movie_data.original_title}
-				</h1>
-				<p class="text-gray-400 text-sm">{movie_data.release_date}</p>
-			</div>
+<div class="flex flex-col min-h-screen bg-black text-white overflow-x-hidden">
+    <!-- Main Responsive Layout -->
+    <div class="flex flex-col lg:flex-row flex-1 p-2 sm:p-4 md:p-6 gap-4 md:gap-6 min-h-0">
+        <!-- Movie Details (Sidebar on desktop, below player on mobile) -->
+        <div class="w-full lg:w-80 lg:flex-shrink-0 order-2 lg:order-1">
+            <!-- Title & Release Date -->
+            <div class="mb-4">
+                <h1 class="text-lg sm:text-xl md:text-2xl font-bold leading-tight">
+                    {movie_data.title || movie_data.original_title}
+                </h1>
+                <p class="text-gray-400 text-sm">{movie_data.release_date?.split('-')[0] || 'N/A'}</p>
+            </div>
 
-			<!-- Movie Poster -->
-			<div class="mb-6">
-				<img
-					src={`https://image.tmdb.org/t/p/w500${movie_data.poster_path}`}
-					alt={`${movie_data.title} Poster`}
-					class="w-full rounded-lg shadow-lg border border-gray-700"
-				/>
-			</div>
+            <!-- Mobile Layout -->
+            <div class="lg:hidden mb-6">
+                <div class="flex gap-3 sm:gap-4">
+                    <!-- Poster -->
+                    <div class="flex-shrink-0 w-24 sm:w-32">
+                        <img
+                            src={`https://image.tmdb.org/t/p/w500${movie_data.poster_path}`}
+                            alt={`${movie_data.title} Poster`}
+                            class="w-full rounded-lg shadow-lg border border-gray-700"
+                            loading="lazy"
+                        />
+                    </div>
 
-			<!-- Add to Home Button -->
-			{#if user}
-				<button
-					class="w-full flex items-center justify-center gap-2 p-3 mb-4 transition-colors duration-200 bg-black border border-gray-700 rounded-lg hover:bg-gray-800"
-					onclick={toggleHomeStatus}
-					title={isAddedToHome ? 'Remove from Home' : 'Add to Home'}
-				>
-					<Heart
-						size={20}
-						color={isAddedToHome ? '#fb2c36' : 'white'}
-						fill={isAddedToHome ? '#fb2c36' : 'none'}
-					/>
-					<span class="text-sm">{isAddedToHome ? 'Added to Home' : 'Add to Home'}</span>
-				</button>
-			{/if}
+                    <!-- Info -->
+                    <div class="flex-1 min-w-0">
+                        {#if user}
+                            <button
+                                onclick={toggleHomeStatus}
+                                class="w-full flex items-center justify-center gap-2 px-2 py-2 mb-3 text-xs font-medium rounded-lg bg-black border border-gray-700 hover:bg-gray-900 transition"
+                                aria-label={isAddedToHome ? 'Remove from Home' : 'Add to Home'}
+                            >
+                                <Heart size={16} color={isAddedToHome ? '#fb2c36' : 'white'} fill={isAddedToHome ? '#fb2c36' : 'none'} />
+                                <span>{isAddedToHome ? 'Added' : 'Add'}</span>
+                            </button>
+                        {/if}
 
-			<!-- Movie Overview -->
-			<div class="bg-gray-900 rounded-lg p-4 mb-4">
-				<h3 class="text-lg font-semibold mb-2">Overview</h3>
-				<p class="text-gray-300 text-sm leading-relaxed line-clamp-6">{movie_data.overview}</p>
-			</div>
+                        <!-- Genres -->
+                        <div class="bg-gray-900 rounded-lg p-2">
+                            <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Genres</h4>
+                            <div class="flex flex-wrap gap-1">
+                                {#each movie_data.genres as genre (genre.id)}
+                                    <span class="px-1.5 py-0.5 text-xs bg-gray-800 border border-gray-600 rounded text-gray-300">
+                                        {genre.name}
+                                    </span>
+                                {/each}
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-			<!-- Genres -->
-			<div class="bg-gray-900 rounded-lg p-4">
-				<h4 class="mb-3 text-sm font-semibold text-gray-400 uppercase tracking-wide">Genres</h4>
-				<div class="flex flex-wrap gap-2">
-					{#each movie_data.genres as genre}
-						<span
-							class="px-2 py-1 text-xs bg-gray-800 border border-gray-700 rounded-full text-gray-300"
-						>
-							{genre.name}
-						</span>
-					{/each}
-				</div>
-			</div>
-		</div>
+                <!-- Overview (Full width) -->
+                <div class="bg-gray-900 rounded-lg p-3 mt-3">
+                    <h3 class="text-base font-semibold mb-2">Overview</h3>
+                    <p class="text-gray-300 text-sm leading-relaxed line-clamp-5">{movie_data.overview}</p>
+                </div>
+            </div>
 
-		<!-- Right Side - Video Player -->
-		<div class="flex-1 flex flex-col min-h-0">
-			<!-- Video Player Container -->
-			<div class="flex-1 relative bg-gray-900 border-2 border-gray-700 rounded-lg shadow-lg overflow-hidden">
-				<iframe
-					src={iframeSources[selectedSource]}
-					class="w-full h-full"
-					allowfullscreen
-					loading="lazy"
-					title="Movie Player"
-					scrolling="no"
-				></iframe>
-			</div>
+            <!-- Desktop Layout -->
+            <div class="hidden lg:block">
+                <img
+                    src={`https://image.tmdb.org/t/p/w500${movie_data.poster_path}`}
+                    alt={`${movie_data.title} Poster`}
+                    class="w-full h-auto rounded-lg shadow-lg border border-gray-700 mb-4"
+                    loading="lazy"
+                />
 
-			<!-- Server Selection Controls -->
-			<div class="mt-4 p-4 bg-gray-900 rounded-lg flex-shrink-0">
-				<div class="flex items-center gap-2 flex-wrap">
-					<span class="text-sm font-medium text-gray-400 mr-2">Server:</span>
-					{#each iframeSources as source, index}
-						<button
-							class={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-								index === selectedSource
-									? 'bg-white text-black'
-									: 'bg-gray-700 text-white hover:bg-gray-600'
-							}`}
-							onclick={() => changeSource(index)}
-						>
-							{index + 1}
-						</button>
-					{/each}
-				</div>
-			</div>
-		</div>
-	</div>
+                {#if user}
+                    <button
+                        onclick={toggleHomeStatus}
+                        class="w-full flex items-center justify-center gap-2 px-4 py-3 mb-4 text-sm font-medium rounded-lg bg-black border border-gray-700 hover:bg-gray-900 transition"
+                        aria-label={isAddedToHome ? 'Remove from Home' : 'Add to Home'}
+                    >
+                        <Heart size={20} color={isAddedToHome ? '#fb2c36' : 'white'} fill={isAddedToHome ? '#fb2c36' : 'none'} />
+                        <span>{isAddedToHome ? 'Added to Home' : 'Add to Home'}</span>
+                    </button>
+                {/if}
+
+                <div class="bg-gray-900 rounded-lg p-4">
+                    <h3 class="text-lg font-semibold mb-3">Overview</h3>
+                    <p class="text-gray-300 text-sm leading-relaxed line-clamp-8">{movie_data.overview}</p>
+                </div>
+
+                <div class="bg-gray-900 rounded-lg p-4 mt-4">
+                    <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Genres</h4>
+                    <div class="flex flex-wrap gap-2">
+                        {#each movie_data.genres as genre (genre.id)}
+                            <span class="px-2 py-1 text-xs bg-gray-800 border border-gray-600 rounded-full text-gray-300">
+                                {genre.name}
+                            </span>
+                        {/each}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Player & Server Controls (Stacked vertically) -->
+        <div class="flex-1 flex flex-col min-h-0 order-1 lg:order-2">
+            <!-- Video Player -->
+            <div class="flex-1 relative bg-gray-900 border-2 border-gray-700 rounded-lg shadow-lg overflow-hidden min-h-[180px] sm:min-h-[280px] md:min-h-[400px]">
+                <iframe
+                    src={iframeSources[selectedSource]}
+                    class="absolute inset-0 w-full h-full"
+                    allow="encrypted-media; fullscreen"
+                    allowfullscreen
+                    loading="lazy"
+                    title="Movie Player"
+                    referrerpolicy="no-referrer"
+                ></iframe>
+            </div>
+
+            <!-- 🔥 Server Selection - Always Directly Below Player 🔥 -->
+            <div class="mt-3 p-3 bg-gray-900 rounded-lg">
+                <div class="flex items-center flex-wrap gap-2">
+                    <span class="text-xs font-medium text-gray-400 whitespace-nowrap">Server:</span>
+                    <div class="flex flex-wrap gap-1.5 flex-1 min-w-0">
+                        {#each iframeSources as _, index}
+                            <button
+                                onclick={() => changeSource(index)}
+                                class={`px-2.5 py-1.5 text-xs font-medium rounded-lg min-w-[32px] text-center transition ${
+                                    index === selectedSource
+                                        ? 'bg-white text-black shadow'
+                                        : 'bg-gray-700 text-white hover:bg-gray-600'
+                                }`}
+                                aria-pressed={index === selectedSource}
+                            >
+                                {index + 1}
+                            </button>
+                        {/each}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
-	.line-clamp-6 {
-		display: -webkit-box;
-		-webkit-line-clamp: 6;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-	}
-
-	.no-scrollbar::-webkit-scrollbar {
-		display: none;
-	}
-	.no-scrollbar {
-		-ms-overflow-style: none;
-		scrollbar-width: none;
-	}
-
-	.scrollbar-hide::-webkit-scrollbar {
-		display: none;
-	}
-	.scrollbar-hide {
-		-ms-overflow-style: none;
-		scrollbar-width: none;
-	}
+    .line-clamp-5 {
+        display: -webkit-box;
+        -webkit-line-clamp: 5;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .line-clamp-8 {
+        display: -webkit-box;
+        -webkit-line-clamp: 8;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
 </style>

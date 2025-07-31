@@ -4,6 +4,7 @@
     import { onMount } from 'svelte';
     import { toast } from 'svelte-sonner';
     import { goto } from '$app/navigation';
+	import MovieCard from '$lib/components/card/MovieCard.svelte';
 
     let { data } = $props();
     let isAddedToHome = $state(false);
@@ -237,7 +238,7 @@
                 ></iframe>
             </div>
 
-            <!-- 🔥 Server Selection - Always Directly Below Player 🔥 -->
+            <!-- Server Selection - Always Directly Below Player -->
             <div class="mt-3 p-3 bg-gray-900 rounded-lg">
                 <div class="flex items-center flex-wrap gap-2">
                     <span class="text-xs font-medium text-gray-400 whitespace-nowrap">Server:</span>
@@ -260,6 +261,35 @@
             </div>
         </div>
     </div>
+
+    <!-- Recommendations Section -->
+    {#if recommendation_data?.results && recommendation_data.results.length > 0}
+        <div class="p-2 sm:p-4 md:p-6 pt-0">
+            <div class="mb-6">
+                <h2 class="text-xl sm:text-2xl font-bold mb-2">Recommended Movies</h2>
+                <p class="text-gray-400 text-sm">More movies you might enjoy</p>
+            </div>
+            
+            <!-- Horizontal Scrolling Grid -->
+            <div class="relative">
+                <div class="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600">
+                    {#each recommendation_data.results.slice(0, 12) as movie (movie.id)}
+                        <div class="flex-none w-48 sm:w-56">
+                           
+                            <MovieCard
+                                id={movie.id}
+                                poster_path={movie.poster_path}
+                                title={movie.title}
+                                vote_average={movie.vote_average}
+                                release_date={movie.release_date}
+                                genre_ids={movie.genre_ids}
+                            />
+                        </div>
+                    {/each}
+                </div>
+            </div>
+        </div>
+    {/if}
 </div>
 
 <style>
@@ -274,5 +304,28 @@
         -webkit-line-clamp: 8;
         -webkit-box-orient: vertical;
         overflow: hidden;
+    }
+    
+    /* Custom scrollbar styles */
+    .scrollbar-thin {
+        scrollbar-width: thin;
+    }
+    
+    .scrollbar-track-gray-800::-webkit-scrollbar-track {
+        background-color: #1f2937;
+        border-radius: 9999px;
+    }
+    
+    .scrollbar-thumb-gray-600::-webkit-scrollbar-thumb {
+        background-color: #4b5563;
+        border-radius: 9999px;
+    }
+    
+    .scrollbar-thumb-gray-600::-webkit-scrollbar-thumb:hover {
+        background-color: #6b7280;
+    }
+    
+    ::-webkit-scrollbar {
+        height: 8px;
     }
 </style>

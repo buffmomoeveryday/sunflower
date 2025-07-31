@@ -129,29 +129,6 @@
 		</div>
 	{/if}
 
-	<!-- My Watchlist Section -->
-	<!-- <section class="container p-4 mx-auto mt-6 rounded-lg" in:fade>
-		{#if myMoiveWatchlist.length > 0}
-			<div class="flex items-center justify-between">
-				<h2 class="text-xl font-bold md:text-2xl">My Movies Watchlist</h2>
-				<span class="text-sm text-gray-400">{myMoiveWatchlist.length} items</span>
-			</div>
-			<div
-				class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
-			>
-				{#each myMoiveWatchlist as movie}
-					<MovieCard
-						id={movie.tmdb_id}
-						title={movie.title}
-						name={movie.title}
-						poster_path={movie.poster_path}
-						first_air_date={movie.first_air_date}
-						vote_average={movie.average_ratings}
-					/>
-				{/each}
-			</div>
-		{/if}
-	</section> -->
 
 	<!-- Popular Movies Section -->
 	<section class="container p-4 mx-auto mt-6 rounded-lg">

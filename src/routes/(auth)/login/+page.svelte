@@ -1,13 +1,39 @@
 <script>
 	import { page } from '$app/stores';
+	import { BaseAuthStore } from 'pocketbase';
+	import { onMount } from 'svelte';
 	let { data, form } = $props();
-	let buttonDisabled = $state(true); // Initialize as true
+	
+	function validateEmail(email) {
+	const valid = String(email)
+		.toLowerCase()
+		.match(
+		/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+		);
+
+	return !!valid;
+	}
+
+
 	let email = $state('');
+	let validEmail = $derived.by(()=>{
+		validateEmail(email)
+	});
 	let password = $state('');
+	let loggingIn = $state(false);
+	
+	let buttonDisabled = $state(true); 
+
+
+	onMount(()=>{
+
+	})
 
 	$effect(() => {
 		buttonDisabled = email === '' || password === '';
 	});
+
+
 </script>
 
 <div class="min-h-screen bg-black flex items-center justify-center p-4">
@@ -46,12 +72,20 @@
 			</label>
 
 			<button
+			onclick={()=>{
+				loggingIn = !loggingIn
+			}}
 				class="w-full px-6 py-3 mt-4 bg-white font-bold text-black rounded-lg shadow-lg focus:outline-none focus:ring-3 focus:ring-white focus:ring-opacity-75 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 ease-in-out"
 				type="submit"
 				disabled={buttonDisabled}
 			>
+			{#if loggingIn}
+				Logging In ....
+			{:else}
 				Login
-			</button>
+			{/if}
+
+		</button>
 		</form>
 
 		<div class="mt-8 text-center text-gray-400 text-sm">

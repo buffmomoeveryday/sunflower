@@ -2,8 +2,8 @@
 	import AnimeCard from '$lib/components/card/AnimeCard.svelte';
 	import { onMount } from 'svelte';
 	let { data } = $props();
-	let animes = data.animeData;
 	let japTitle = $state(false);
+	let animes = data.animeData;
 </script>
 
 <div class="min-h-screen p-4 text-white bg-black">

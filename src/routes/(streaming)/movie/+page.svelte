@@ -9,6 +9,7 @@
 
 	let { data } = $props();
 
+
 	let user = data?.user;
 
 	let popularMovies = data.popularMoviesData;

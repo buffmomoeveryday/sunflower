@@ -12,7 +12,7 @@ export async function load({ params }) {
 
 	let movieData = await fetchWithCache(url, movie_id);
 	let recommendation_data = await fetchWithCache(recommendation_url, `${movie_id}-recommendation`);
-
+	
 	return {
 		movie_id: movie_id,
 		movieData: movieData,

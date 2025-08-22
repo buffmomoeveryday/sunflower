@@ -9,6 +9,7 @@ export async function load({ params }) {
 
 	const popularMoviesData = await fetchWithCache(popularMoviesUrl, 'popularMovies');
 	const newReleasesData = await fetchWithCache(newReleasesUrl, 'newReleases');
+
 	return { popularMoviesData: popularMoviesData, newReleasesData: newReleasesData };
 }
 

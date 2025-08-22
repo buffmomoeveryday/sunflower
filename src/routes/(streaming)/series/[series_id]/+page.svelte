@@ -268,6 +268,7 @@
 			}
 		}
 	}
+
 	function previousEpisode() {
 		if (selectedEpisode > 1) {
 			selectEpisode(selectedEpisode - 1);
@@ -278,6 +279,7 @@
 			});
 		}
 	}
+
 	// Update the nextEpisode function to check air dates
 	function nextEpisode() {
 		if (selectedEpisode < episodes.length) {
@@ -404,7 +406,6 @@
 						<div class="space-y-2 max-h-96 overflow-y-auto no-scrollbar">
 							{#each episodes as episode, index}
 								<button
-									disabled={new Date(episode.air_date) > new Date()}
 									onclick={() => selectEpisode(index + 1)}
 									class={`w-full p-3 text-left transition-all duration-200 rounded-lg border flex items-start gap-4 ${
 										selectedEpisode === index + 1

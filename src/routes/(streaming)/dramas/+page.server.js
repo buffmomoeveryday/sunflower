@@ -9,12 +9,9 @@ export async function load({ params }) {
 	const koreanTopRatedUrl = `${baseDiscoverUrl}?api_key=${API_KEY}&sort_by=vote_average.desc&vote_count.gte=50&with_origin_country=KR`;
 	const koreanPopularUrl = `${baseDiscoverUrl}?api_key=${API_KEY}&sort_by=popularity.desc&with_origin_country=KR&page=1`;
 
-	// Search for specific Korean keywords (optional)
-	// Alternative: Search with Korean language content
 	const koreanKeywordSearchUrl = `${searchUrl}?api_key=${API_KEY}&query=korean drama&language=ko-KR`;
 	const koreanLanguageUrl = `${baseDiscoverUrl}?api_key=${API_KEY}&sort_by=popularity.desc&with_original_language=ko`;
 
-	// Fetch Korean content
 	let koreanTrendingSeries = await fetchWithCache(koreanTrendingUrl, 'koreanTrendingDramas');
 	let koreanTopRatedSeries = await fetchWithCache(koreanTopRatedUrl, 'koreanTopRatedDramas');
 	let koreanPopularSeries = await fetchWithCache(koreanPopularUrl, 'koreanPopularDramas');

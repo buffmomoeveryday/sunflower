@@ -1,3 +1,5 @@
+import { API_KEY } from '$env/static/private';
+
 const cache = new Map();
 
 export async function fetchWithCache(url, cacheKey, ttl = 300000) {
@@ -8,12 +10,18 @@ export async function fetchWithCache(url, cacheKey, ttl = 300000) {
 			return data;
 		}
 	}
-	const response = await fetch(url);
-	const data = await response.json();
-	cache.set(cacheKey, { data, timestamp: now });
-	return data;
+	try {
+		const response = await fetch(url);
+		if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+		const data = await response.json();
+		cache.set(cacheKey, { data, timestamp: now });
+		return data;
+	} catch (err) {
+		console.error("Fetch error:", err.message);
+		return null;
+	}
 }
 
-export const API_KEY = '0a9e7f0d6a5dacc13c60776291c3edcc';
-export const POCKETBASE_URL = 'https://sunflower-pocketbase.fly.dev';
+export const API_KEY = API_KEY;
+export const POCKETBASE_URL = "https://sunflower-pocketbase.fly.dev";
 export const PUBLIC_REDIRECT_URI = '/';

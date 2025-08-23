@@ -79,18 +79,16 @@
 	</section>
 {/snippet}
 
-<div class="min-h-screen p-4 text-white bg-black">
-	{@render layout(trendingSeries, "Trending Series")}
-	{@render layout(popularSeries, "Popular Series")}
-	{@render layout(topRatedSeries, "Top Rated Series")}
-</div>
+{@render layout(trendingSeries, "Trending Series")}
+{@render layout(popularSeries, "Popular Series")}
+{@render layout(topRatedSeries, "Top Rated Series")}
 
 <style>
 	.scrollbar-hide::-webkit-scrollbar {
 		display: none;
 	}
 	.scrollbar-hide {
-		-ms-overflow-style: none; /* IE and Edge */
-		scrollbar-width: none; /* Firefox */
+		-ms-overflow-style: none;
+		scrollbar-width: none;
 	}
 </style>

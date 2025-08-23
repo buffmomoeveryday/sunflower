@@ -1,6 +1,6 @@
 <script>
-	import AnimeCard from '$lib/components/card/AnimeCard.svelte';
-	import { onMount } from 'svelte';
+	import AnimeCard from "$lib/components/card/AnimeCard.svelte";
+	import { onMount } from "svelte";
 	let { data } = $props();
 	let japTitle = $state(false);
 	let animes = data.animeData;

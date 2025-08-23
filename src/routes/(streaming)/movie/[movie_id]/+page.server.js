@@ -14,8 +14,8 @@ export async function load({ params }) {
 	let recommendation_data = await fetchWithCache(recommendation_url, `${movie_id}-recommendation`);
 	
 	return {
-		movie_id: movie_id,
-		movieData: movieData,
-		recommendation_data: recommendation_data
+		 movie_id,
+		 movieData,
+		 recommendation_data
 	};
 }

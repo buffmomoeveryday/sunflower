@@ -20,7 +20,6 @@
 	let anime_data = data.anime_data;
 	let anime_id = $page.params.anime_id;
 
-	// State Management (using runes or equivalent)
 	const dub = new PersistedState(`dub_${anime_id}`, 0);
 	const episode = new PersistedState(`episode_${anime_id}`, 1);
 	const selectedSource = new PersistedState(`selectedSource_${anime_id}`, 0);

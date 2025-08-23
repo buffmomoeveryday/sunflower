@@ -74,10 +74,8 @@
 	</section>
 {/snippet}
 
-<div class="min-h-screen p-4 text-white bg-black">
-	{@render layout(newReleases, "New Releases")}
-	{@render layout(popularMovies, "Popular Movies")}
-</div>
+{@render layout(newReleases, "New Releases")}
+{@render layout(popularMovies, "Popular Movies")}
 
 <style>
 	.scrollbar-hide::-webkit-scrollbar {

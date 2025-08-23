@@ -1,15 +1,23 @@
 <script>
 	import { goto } from "$app/navigation";
-	import { db } from "$lib/db/db";
+	import { db } from "../../dexie";
 	import { watch } from "runed";
 	import { onMount } from "svelte";
 	import { Bookmark } from "lucide-svelte";
+	import { getMovieTrailer } from "../../remote/trailer.remote.js";
+	import { browser } from "$app/environment";
+	import { removeBgImage, setBgImage } from "$lib/state/bgImage.svelte";
 
 	let { id, tmdb_id, poster_path, title, vote_average, release_date, genre_ids = [] } = $props();
 
 	let showTrailer = $state(false);
-	let trailer_key = $state("");
-
+	let trailer_key = $derived.by(async () => {
+		if (showTrailer) {
+			const key = await getMovieTrailer(id.toString());
+			return key;
+		}
+		return "";
+	});
 	let isBookmarked = $state(false);
 
 	async function toggleBookmark() {
@@ -61,14 +69,7 @@
 		() => showTrailer,
 		async () => {
 			if (showTrailer) {
-				const url = `/api/movie/trailer?tmdb_id=${id}`;
-				trailer_key = await fetch(url).then(async (response) => {
-					if (!response.ok) {
-						return null;
-					}
-					const resp = await response.json();
-					return resp.key;
-				});
+				trailer_key = await getMovieTrailer(id.toString());
 			}
 		}
 	);
@@ -85,17 +86,18 @@
 	});
 </script>
 
-<svelte:window
-	on:keydown={(e) => {
-		if (showTrailer) {
-			if (e.keyCode === 27) {
-				showTrailer = false;
-			}
-		}
-	}}
-/>
+<svelte:window on:keydown={(e) => e.key === "Escape" && (showTrailer = false)} />
 
-<div class="group relative w-full max-w-sm mx-auto">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+	class="group relative w-full max-w-sm mx-auto"
+	onmouseenter={() => {
+		setBgImage(`https://image.tmdb.org/t/p/original${poster_path}`);
+	}}
+	onmouseleave={() => {
+		removeBgImage();
+	}}
+>
 	<div
 		class="relative overflow-hidden bg-gray-900/80 backdrop-blur-sm rounded-2xl shadow-lg transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-2 border border-gray-800/50"
 	>
@@ -113,10 +115,11 @@
 				</button>
 			</div>
 
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div
 				onclick={() => {
+					if (!browser) return;
 					if (tmdb_id) {
 						goto(`/movie/${tmdb_id}`);
 					} else {
@@ -209,7 +212,7 @@
 						class="flex-1 bg-pink-500 hover:bg-pink-700 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow-md transition-colors duration-300"
 						onclick={() => (showTrailer = true)}
 					>
-						Trailer
+						Watch Trailer
 					</button>
 				</div>
 			</div>

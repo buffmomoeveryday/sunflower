@@ -15,10 +15,19 @@ const config = {
 		},
 		alias: {
 			'@/*': './path/to/lib/*'
-		}
+		},
+		experimental: {
+			remoteFunctions: true
+		},
 	},
 	vitePlugin: {
 		inspector: true
+	},
+
+	compilerOptions: {
+		experimental: {
+			async: true
+		}
 	}
 };
 

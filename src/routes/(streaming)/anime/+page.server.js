@@ -50,6 +50,7 @@ const fetchAnime = async () => {
 		return json.data.Page.media;
 	} catch (error) {
 		console.error('Error fetching trending anime:', error);
+		return error(404,"Error ")
 	}
 };
 

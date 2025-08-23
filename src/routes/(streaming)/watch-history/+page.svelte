@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from "svelte";
-	import { db } from "$lib/db/db.js";
+	import { db } from "$lib/dexie";
 	import MovieCard from "$lib/components/card/MovieCard.svelte";
 
 	let activeTab = "movies"; // 'movies' | 'series' | 'anime'
@@ -50,8 +50,8 @@
 	});
 </script>
 
-<div class="min-h-screen bg-gray-950 text-white p-6">
-	<div class="max-w-6xl mx-auto bg-gray-900 rounded-2xl p-6 shadow-lg">
+<div class="min-h-screen bg-black text-white p-6">
+	<div class="max-w-6xl mx-auto bg-black rounded-2xl p-6 shadow-lg">
 		<!-- Header -->
 		<h2 class="text-3xl font-bold mb-6">My Collection</h2>
 

@@ -1,10 +1,12 @@
 <script>
 	import MovieCard from "$lib/components/card/MovieCard.svelte";
 	import SeriesCard from "$lib/components/card/SeriesCard.svelte";
-	import { db } from "$lib/db/db";
+	import { PersistedState } from "runed";
+
+	import { db } from "$lib/dexie.js";
 	import { onMount } from "svelte";
 
-	let activeTab = $state("movie");
+	const activeTab = new PersistedState("bookmarks", "movie");
 
 	let bookmarkedMovies = $state([]);
 	let bookmarkedSeries = $state([]);
@@ -16,12 +18,12 @@
 		// bookmarkedAnime = await db.anime_bookmark.toArray();
 	});
 	function setActiveTab(tab) {
-		activeTab = tab;
+		activeTab.current = tab;
 	}
 </script>
 
-<div class="min-h-screen bg-gray-950 text-white p-6">
-	<div class="container mx-auto max-w-6xl bg-gray-900 rounded-2xl p-6 shadow-lg">
+<div class="min-h-screen bg-black text-white p-6">
+	<div class="container mx-auto max-w-6xl bg-black rounded-2xl p-6 shadow-lg">
 		<!-- Header -->
 		<div class="mb-8">
 			<h1 class="text-3xl font-bold text-white mb-2">My Bookmarks</h1>
@@ -32,7 +34,7 @@
 		<div class="flex border-b border-gray-700 mb-6 space-x-2">
 			<button
 				class="px-6 py-3 font-medium text-sm rounded-t-lg transition-all duration-200
-				{activeTab === 'movie'
+				{activeTab.current === 'movie'
 					? 'border-b-2 border-blue-500 text-blue-400 bg-gray-800'
 					: 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'}"
 				onclick={() => setActiveTab("movie")}
@@ -41,7 +43,7 @@
 			</button>
 			<button
 				class="px-6 py-3 font-medium text-sm rounded-t-lg transition-all duration-200
-				{activeTab === 'series'
+				{activeTab.current === 'series'
 					? 'border-b-2 border-blue-500 text-blue-400 bg-gray-800'
 					: 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'}"
 				onclick={() => setActiveTab("series")}
@@ -50,7 +52,7 @@
 			</button>
 			<button
 				class="px-6 py-3 font-medium text-sm rounded-t-lg transition-all duration-200
-				{activeTab === 'anime'
+				{activeTab.current === 'anime'
 					? 'border-b-2 border-blue-500 text-blue-400 bg-gray-800'
 					: 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'}"
 				onclick={() => setActiveTab("anime")}
@@ -61,7 +63,7 @@
 
 		<!-- Tab Content -->
 		<div class="min-h-[24rem]">
-			{#if activeTab === "movie"}
+			{#if activeTab.current === "movie"}
 				<div class="tab-content">
 					<div class="flex items-center justify-between mb-6">
 						<h2 class="text-xl font-semibold text-white">Bookmarked Movies</h2>
@@ -85,7 +87,7 @@
 						</div>
 					{/if}
 				</div>
-			{:else if activeTab === "series"}
+			{:else if activeTab.current === "series"}
 				<div class="tab-content">
 					<div class="flex items-center justify-between mb-6">
 						<h2 class="text-xl font-semibold text-white">Bookmarked Series</h2>

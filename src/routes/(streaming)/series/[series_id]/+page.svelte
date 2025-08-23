@@ -1,8 +1,9 @@
 <script>
-	import { db } from "$lib/db/db.js";
+	import { db } from "$lib/dexie.js";
 	import { onMount } from "svelte";
 	import { toast } from "svelte-sonner";
 	import { PersistedState } from "runed";
+	import { getEpisodes } from "$lib/remote/series.remote";
 	import {
 		Heart,
 		ChevronLeft,
@@ -36,8 +37,6 @@
 	const SERIES_ADDED_KEY = `series_${seriesDetailData.id}_added`;
 
 	let iframeSources = $derived([
-		// `https://vidsrc.cc/v3/embed/tv/tt${seriesDetailData.id}/${selectedSeason.current}/${selectEpisode.current}?autoPlay=false`,
-		// `https://vidsrc.cc/v2/embed/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
 		`https://vidsrc.icu/embed/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
 		`https://embed.su/embed/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
 		`https://player.autoembed.cc/embed/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
@@ -94,119 +93,13 @@
 		}
 	}
 
-	async function callWatchlistAPI(action) {
-		if (!user) return;
-		try {
-			if (action === "add") {
-				const response = await fetch("/api/series/watchlist/save", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						user_id: data.user.id,
-						tmdb_id: seriesDetailData.id,
-						season_id: selectedSeason.current,
-						episode_id: selectedEpisode.current,
-						title: seriesDetailData.name,
-						poster_path: seriesDetailData.poster_path,
-						average_ratings: seriesDetailData.vote_average
-					})
-				});
-				const result = await response.json();
-				if (response.ok) {
-					toast.success("Added to watchlist");
-				} else {
-					throw new Error(result.message || "Failed to add to watchlist");
-				}
-			} else if (action === "remove") {
-				const response = await fetch("/api/series/watchlist/save", {
-					method: "DELETE",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ id: seriesDetailData.id, user_id: user.id })
-				});
-				if (response.ok) {
-					toast.success("Removed from watchlist");
-				} else {
-					const result = await response.json();
-					throw new Error(result.message || "Failed to remove from watchlist");
-				}
-			}
-		} catch (error) {
-			console.error("Error calling watchlist API:", error);
-			toast.error("An error occurred");
-		}
-	}
-
-	function checkIfSeriesInHome() {
-		const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || "[]");
-		return storedSeries.some((series) => series.id === seriesDetailData.id);
-	}
-
-	function storeSeriesDataOnceWithDelay() {
-		const isSeriesAlreadyAdded = localStorage.getItem(SERIES_ADDED_KEY);
-
-		if (!isSeriesAlreadyAdded) {
-			setTimeout(async () => {
-				const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || "[]");
-				const seriesData = {
-					id: seriesDetailData.id,
-					name: seriesDetailData.name,
-					poster_path: seriesDetailData.poster_path,
-					first_air_date: seriesDetailData.first_air_date,
-					vote_average: seriesDetailData.vote_average,
-					addedAt: new Date().toISOString(),
-					user_id: user.id
-				};
-				storedSeries.push(seriesData);
-				localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedSeries));
-				localStorage.setItem(SERIES_ADDED_KEY, "true");
-				isAddedToHome = true;
-				if (data.user.id) await callWatchlistAPI("add");
-			}, 4000);
-		}
-	}
-
-	async function toggleHomeStatus() {
-		const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || "[]");
-		if (isAddedToHome) {
-			const updatedSeries = storedSeries.filter((series) => series.id !== seriesDetailData.id);
-			localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(updatedSeries));
-			isAddedToHome = false;
-			if (data.user.id) {
-				await callWatchlistAPI("remove");
-			}
-		} else {
-			const seriesData = {
-				id: seriesDetailData.id,
-				name: seriesDetailData.name,
-				poster_path: seriesDetailData.poster_path,
-				first_air_date: seriesDetailData.first_air_date,
-				vote_average: seriesDetailData.vote_average,
-				addedAt: new Date().toISOString(),
-				user_id: user.id
-			};
-			storedSeries.push(seriesData);
-			localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedSeries));
-			isAddedToHome = true;
-			if (data.user.id) await callWatchlistAPI("add");
-		}
-	}
-
 	async function fetchEpisodes(seasonNumber) {
 		selectEpisode.current = seasonNumber;
-		try {
-			let response = await fetch("/api/series/episodes", {
-				method: "POST",
-				body: new URLSearchParams({
-					tv_id: seriesDetailData.id,
-					season_number: seasonNumber
-				})
-			});
-			let result = await response.json();
-			episodes = result.episodes;
-			await updateProgressInDatabase();
-		} catch (error) {
-			console.error("Error fetching episodes:", error);
-		}
+		let result = await getEpisodes({
+			tvId: seriesDetailData.id.toString(),
+			seasonNumber: seasonNumber.toString()
+		});
+		episodes = result.episodes;
 	}
 
 	async function selectEpisode(episodeId) {
@@ -247,29 +140,29 @@
 	}
 
 	async function getProgress() {
-		if (user) {
-			try {
-				let response = await fetch("/api/series/watchlist/get", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						user_id: data.user.id,
-						tmdb_id: seriesDetailData.id
-					})
-				});
-				if (response.ok) {
-					isAddedToHome = true;
-					let result = await response.json();
-					if (result.records) {
-						selectedSeason.current = result.records.season_id;
-						selectedEpisode.current = result.records.episode_id;
-						isAddedToHome = !isAddedToHome;
-					}
-				}
-			} catch (error) {
-				console.error("Error fetching watchlist data:", error);
-			}
-		}
+		// if (user) {
+		// 	try {
+		// 		let response = await fetch("/api/series/watchlist/get", {
+		// 			method: "POST",
+		// 			headers: { "Content-Type": "application/json" },
+		// 			body: JSON.stringify({
+		// 				user_id: data.user.id,
+		// 				tmdb_id: seriesDetailData.id
+		// 			})
+		// 		});
+		// 		if (response.ok) {
+		// 			isAddedToHome = true;
+		// 			let result = await response.json();
+		// 			if (result.records) {
+		// 				selectedSeason.current = result.records.season_id;
+		// 				selectedEpisode.current = result.records.episode_id;
+		// 				isAddedToHome = !isAddedToHome;
+		// 			}
+		// 		}
+		// 	} catch (error) {
+		// 		console.error("Error fetching watchlist data:", error);
+		// 	}
+		// }
 	}
 
 	function previousEpisode() {
@@ -304,13 +197,6 @@
 		isSidebarVisible = !isSidebarVisible;
 	}
 
-	function handleMessage() {
-		if (data.type === "PLAYER_EVENT") {
-			const { event, currentTime, duration } = data.data;
-			console.log(`Player event: ${event} at ${currentTime}s of ${duration}s`);
-		}
-	}
-
 	onMount(async () => {
 		await fetchEpisodes(selectedSeason.current);
 		await getProgress();
@@ -329,11 +215,22 @@
 					number_of_seasons: seriesDetailData.number_of_seasons
 				});
 			}
-		});
+		}, 5000);
+	});
+
+	$effect(() => {
+		console.log(iframeSources, selectedEpisode.current);
 	});
 </script>
 
-<svelte:window on:message={handleMessage} />
+<svelte:window
+	on:message={() => {
+		if (data.type === "PLAYER_EVENT") {
+			const { event, currentTime, duration } = data.data;
+			console.log(`Player event: ${event} at ${currentTime}s of ${duration}s`);
+		}
+	}}
+/>
 
 <div class="flex flex-col min-h-screen text-white bg-black">
 	<!-- Mobile Header -->
@@ -352,10 +249,7 @@
 			{seriesDetailData.name}
 		</h1>
 		{#if user}
-			<button
-				onclick={toggleHomeStatus}
-				class="p-2 transition-colors duration-200 hover:bg-gray-800 rounded-lg"
-			>
+			<button class="p-2 transition-colors duration-200 hover:bg-gray-800 rounded-lg">
 				<Heart
 					size={20}
 					color={isAddedToHome ? "#fb2c36" : "white"}
@@ -389,7 +283,6 @@
 					{#if user}
 						<button
 							class="hidden md:flex items-center gap-2 w-full p-3 mb-6 transition-colors duration-200 bg-black border border-gray-700 rounded-lg hover:bg-gray-800"
-							onclick={toggleHomeStatus}
 						>
 							<Heart
 								size={20}
@@ -446,19 +339,17 @@
 											? "This episode is not live yet!"
 											: ""}
 									>
-										<!-- Episode Still Image - Increased size -->
 										{#if episode.still_path}
 											<img
+												loading="eager"
 												src={`https://image.tmdb.org/t/p/w300${episode.still_path}`}
 												alt={`Episode ${episode.episode_number} Still`}
 												class="w-24 h-auto rounded flex-shrink-0 object-cover aspect-video"
 											/>
 										{:else}
-											<!-- Placeholder if no image - Increased size -->
 											<div
 												class="w-24 h-14 rounded flex-shrink-0 bg-gray-700 flex items-center justify-center"
 											>
-												<!-- Increased width (w-24) and height (h-14) -->
 												<span class="text-xs text-gray-500">No Image</span>
 											</div>
 										{/if}
@@ -470,13 +361,9 @@
 												<span>&#8226;</span>
 												<span>{episode.air_date}</span>
 											</div>
-											<!-- Optional: Add a brief overview snippet if available and space allows -->
-											<!-- <p class="text-xs text-gray-500 mt-1 truncate">{episode.overview || 'No overview available.'}</p> -->
 										</div>
-										<!-- Play Icon for Selected Episode -->
 										{#if selectedEpisode === index + 1}
 											<Play size={18} class="flex-shrink-0 self-center" />
-											<!-- Slightly larger play icon -->
 										{/if}
 									</button>
 								{/if}
@@ -582,10 +469,7 @@
 					</div>
 				</div>
 			</div>
-			<!-- Series Information - Scrollable -->
-			<!-- Applied no-scrollbar class here -->
 			<div class="p-4 md:p-6 space-y-6 overflow-y-auto flex-shrink-0 max-h-64 no-scrollbar">
-				<!-- Series Details -->
 				<div class="p-6 bg-gray-900 rounded-lg">
 					<h3 class="flex items-center gap-2 mb-4 text-xl font-bold">
 						<Info size={20} />

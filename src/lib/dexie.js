@@ -9,6 +9,6 @@ db.version(1).stores({
     series_watch_history: '++id, tmdb_id, poster_path, name, vote_average, first_air_date, number_of_seasons',
     series_bookmark: '++id, tmdb_id, poster_path, name, vote_average, first_air_date, number_of_seasons',
     // 
-    animes: '++id, tmdb_id,poster, name, vote, start_date, title,episodes',
+    series_watch_history: '++id, tmdb_id,poster, name, vote, start_date, title,episodes',
     animes_bookmark: '++id, tmdb_id,poster, name, vote, start_date, title,episodes'
 });

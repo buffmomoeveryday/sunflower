@@ -1,9 +1,9 @@
 <script>
-	import { LogOut } from 'lucide-svelte';
-	import { page } from '$app/stores';
-	import { ProgressBar } from '@prgm/sveltekit-progress-bar';
-	import { enhance } from '$app/forms';
-	import { onMount } from 'svelte';
+	import { LogOut } from "lucide-svelte";
+	import { page } from "$app/stores";
+	import { ProgressBar } from "@prgm/sveltekit-progress-bar";
+	import { enhance } from "$app/forms";
+	import { onMount } from "svelte";
 
 	const { data, user, gravitarUrl } = $props();
 
@@ -11,12 +11,12 @@
 	let mobileMenuOpen = $state(false);
 
 	const navItems = $derived([
-		{ name: 'Home', path: '/', icon: 'home' },
-		{ name: 'Movies', path: '/movie', icon: 'home' },
-		{ name: 'Series', path: '/series', icon: 'tv' },
-		{ name: 'Anime', path: '/anime', icon: 'search' },
-		{ name: 'Dramas', path: '/dramas', icon: 'search' },
-		{ name: 'Search', path: '/search', icon: 'search' }
+		{ name: "Home", path: "/", icon: "home" },
+		{ name: "Movies", path: "/movie", icon: "home" },
+		{ name: "Series", path: "/series", icon: "tv" },
+		{ name: "Anime", path: "/anime", icon: "search" },
+		{ name: "Dramas", path: "/dramas", icon: "search" },
+		{ name: "Search", path: "/search", icon: "search" }
 	]);
 
 	function isActive(path) {
@@ -24,23 +24,22 @@
 	}
 
 	function handleClickOutside(event) {
-		const dropdown = document.querySelector('.dropdown');
+		const dropdown = document.querySelector(".dropdown");
 		if (dropdown && !dropdown.contains(event.target)) {
 			dropdownOpen = false;
 		}
-
 	}
 
 	// Listen for clicks on the window
 	onMount(() => {
-		window.addEventListener('click', handleClickOutside);
+		window.addEventListener("click", handleClickOutside);
 		return () => {
-			window.removeEventListener('click', handleClickOutside);
+			window.removeEventListener("click", handleClickOutside);
 		};
 	});
 </script>
 
-<nav class="sticky top-0 z-50 w-full border-b border-gray-800 bg-black/95 backdrop-blur-sm">
+<nav class="sticky top-0 z-50 w-full border-b border-gray-800 bg-black backdrop-blur-sm">
 	<div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
 		<div class="flex items-center justify-between h-16">
 			<div class="flex items-center space-x-4">
@@ -67,8 +66,8 @@
 				{#each navItems as item}
 					<a
 						href={item.path}
-						class={'px-3 py-2 rounded-lg transition ' +
-							(isActive(item.path) ? 'bg-white text-black' : 'text-white hover:text-gray-300')}
+						class={"px-3 py-2 rounded-lg transition " +
+							(isActive(item.path) ? "bg-white text-black" : "text-white hover:text-gray-300")}
 						>{item.name}</a
 					>
 				{/each}
@@ -122,8 +121,8 @@
 				{#each navItems as item}
 					<a
 						href={item.path}
-						class={'block px-4 py-2 rounded-lg transition ' +
-							(isActive(item.path) ? 'bg-white text-black' : 'text-white hover:text-gray-300')}
+						class={"block px-4 py-2 rounded-lg transition " +
+							(isActive(item.path) ? "bg-white text-black" : "text-white hover:text-gray-300")}
 						>{item.name}</a
 					>
 				{/each}

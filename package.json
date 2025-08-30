@@ -35,7 +35,9 @@
 	},
 	"dependencies": {
 		"crypto-js": "^4.2.0",
+		"dexie": "^4.2.0",
 		"pocketbase": "^0.25.1",
+		"runed": "^0.31.1",
 		"svelte-sonner": "^0.3.28",
 		"tailwind-scrollbar-hide": "^4.0.0"
 	}

@@ -1,6 +1,8 @@
 <script>
-	import { onMount } from 'svelte';
-	import { toast } from 'svelte-sonner';
+	import { db } from "$lib/db/db.js";
+	import { onMount } from "svelte";
+	import { toast } from "svelte-sonner";
+	import { PersistedState } from "runed";
 	import {
 		Heart,
 		ChevronLeft,
@@ -12,68 +14,71 @@
 		Clock,
 		Info,
 		Menu,
-		X
-	} from 'lucide-svelte';
+		X,
+		SearchSlashIcon
+	} from "lucide-svelte";
+
 	let { data } = $props();
 	let seriesDetailData = data.seriesDetailData;
 	let user = data?.user;
-	// Reactive state
-	let selectedSource = $state(0);
-	let selectedSeason = $state(1);
-	let episodes = $state([]);
-	let selectedEpisode = $state(1);
-	let isAddedToHome = $state(false);
-	let isSidebarVisible = $state(false); // Start hidden on mobile
-	let isPlayerLoading = $state(true); // Track loading state
 
-	// Local storage keys
+	const selectedSource = new PersistedState(`selected_source_${seriesDetailData.id}`, 0);
+	const selectedSeason = new PersistedState(`selected_season_${seriesDetailData.id}`, 1);
+	const selectedEpisode = new PersistedState(`selected_episodes_${seriesDetailData.id}`, 1);
+
+	let episodes = $state([]);
+	let isAddedToHome = $state(false);
+	let isSidebarVisible = $state(false);
+	let isPlayerLoading = $state(true);
+
 	const STORAGE_KEY = `series_${seriesDetailData.id}_progress`;
-	const HOME_STORAGE_KEY = 'homepage_series';
+	const HOME_STORAGE_KEY = "homepage_series";
 	const SERIES_ADDED_KEY = `series_${seriesDetailData.id}_added`;
 
-	// Derived State
 	let iframeSources = $derived([
-		`https://vidsrc.cc/v2/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}?progress=120"`,
-		`https://vidsrc.icu/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
-		`https://embed.su/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
-		`https://player.videasy.net/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`, //supports event
-		`https://player.autoembed.cc/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
-		`https://111movies.com/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`, //no
-		`https://vidjoy.pro/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
-		`https://mappletv.uk/watch/tv/${seriesDetailData.id}-${selectedSeason}-${selectedEpisode}`, //supports events
-		`https://vidfast.pro/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}?autoPlay=true`, //supports events
-		`https://vidlink.pro/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`, //supports events
-		`https://embed.rgshows.me/api/2/tv/?id=${seriesDetailData.id}&s=${selectedSeason}&e=${selectedSeason}`,
-		`https://embed.rgshows.me/api/3/tv/?id=${seriesDetailData.id}&s=${selectedSeason}&e=${selectedEpisode}`
+		// `https://vidsrc.cc/v3/embed/tv/tt${seriesDetailData.id}/${selectedSeason.current}/${selectEpisode.current}?autoPlay=false`,
+		// `https://vidsrc.cc/v2/embed/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
+		`https://vidsrc.icu/embed/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
+		`https://embed.su/embed/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
+		`https://player.autoembed.cc/embed/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
+		`https://111movies.com/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
+		`https://vidjoy.pro/embed/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
+		`https://embed.rgshows.me/api/2/tv/?id=${seriesDetailData.id}&s=${selectedSeason.current}&e=${selectedEpisode.current}`,
+		`https://embed.rgshows.me/api/3/tv/?id=${seriesDetailData.id}&s=${selectedSeason.current}&e=${selectedEpisode.current}`,
+		`https://player.videasy.net/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`, //supports event
+		`https://mappletv.uk/watch/tv/${seriesDetailData.id}-${selectedSeason.current}-${selectedEpisode.current}`, //supports events
+		`https://vidfast.pro/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}?autoPlay=true`, //supports events
+		`https://vidlink.pro/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}` //supports events
 	]);
-	
+
 	let isNextEpisodeAvailable = $derived(() => {
-		const currentEpisodeIndex = selectedEpisode - 1;
+		const currentEpisodeIndex = selectedEpisode.current - 1;
 		if (currentEpisodeIndex + 1 < episodes.length) {
 			const nextEpisode = episodes[currentEpisodeIndex + 1];
 			return new Date(nextEpisode.air_date) <= new Date();
 		} else {
-			return selectedSeason < seriesDetailData.seasons.length;
+			return selectedSeason.current < seriesDetailData.seasons.length;
 		}
 	});
 
 	let isDisabled = $derived.by(() => {
 		!isNextEpisodeAvailable ||
-			(selectedSeason >= seriesDetailData.seasons.length && selectedEpisode >= episodes.length);
+			(selectedSeason.current >= seriesDetailData.seasons.length &&
+				selectedEpisode.current >= episodes.length);
 	});
 
 	async function updateProgressInDatabase() {
 		if (!isAddedToHome) return;
 		if (!user) return;
 		try {
-			const response = await fetch('/api/series/watchlist/save', {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
+			const response = await fetch("/api/series/watchlist/save", {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					user_id: data.user.id,
 					tmdb_id: seriesDetailData.id,
-					season_id: selectedSeason,
-					episode_id: selectedEpisode,
+					season_id: selectedSeason.current,
+					episode_id: selectedEpisode.current,
 					title: seriesDetailData.name,
 					poster_path: seriesDetailData.poster_path,
 					average_ratings: seriesDetailData.vote_average
@@ -81,27 +86,26 @@
 			});
 			if (!response.ok) {
 				const result = await response.json();
-				throw new Error(result.message || 'Failed to update progress');
+				throw new Error(result.message || "Failed to update progress");
 			}
 		} catch (error) {
-			console.error('Error updating progress:', error);
-			toast.error('Failed to save progress');
+			console.error("Error updating progress:", error);
+			toast.error("Failed to save progress");
 		}
 	}
-
 
 	async function callWatchlistAPI(action) {
 		if (!user) return;
 		try {
-			if (action === 'add') {
-				const response = await fetch('/api/series/watchlist/save', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
+			if (action === "add") {
+				const response = await fetch("/api/series/watchlist/save", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
 						user_id: data.user.id,
 						tmdb_id: seriesDetailData.id,
-						season_id: selectedSeason,
-						episode_id: selectedEpisode,
+						season_id: selectedSeason.current,
+						episode_id: selectedEpisode.current,
 						title: seriesDetailData.name,
 						poster_path: seriesDetailData.poster_path,
 						average_ratings: seriesDetailData.vote_average
@@ -109,40 +113,40 @@
 				});
 				const result = await response.json();
 				if (response.ok) {
-					toast.success('Added to watchlist');
+					toast.success("Added to watchlist");
 				} else {
-					throw new Error(result.message || 'Failed to add to watchlist');
+					throw new Error(result.message || "Failed to add to watchlist");
 				}
-			} else if (action === 'remove') {
-				const response = await fetch('/api/series/watchlist/save', {
-					method: 'DELETE',
-					headers: { 'Content-Type': 'application/json' },
+			} else if (action === "remove") {
+				const response = await fetch("/api/series/watchlist/save", {
+					method: "DELETE",
+					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({ id: seriesDetailData.id, user_id: user.id })
 				});
 				if (response.ok) {
-					toast.success('Removed from watchlist');
+					toast.success("Removed from watchlist");
 				} else {
 					const result = await response.json();
-					throw new Error(result.message || 'Failed to remove from watchlist');
+					throw new Error(result.message || "Failed to remove from watchlist");
 				}
 			}
 		} catch (error) {
-			console.error('Error calling watchlist API:', error);
-			toast.error('An error occurred');
+			console.error("Error calling watchlist API:", error);
+			toast.error("An error occurred");
 		}
 	}
 
-
 	function checkIfSeriesInHome() {
-		const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
+		const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || "[]");
 		return storedSeries.some((series) => series.id === seriesDetailData.id);
 	}
 
 	function storeSeriesDataOnceWithDelay() {
 		const isSeriesAlreadyAdded = localStorage.getItem(SERIES_ADDED_KEY);
+
 		if (!isSeriesAlreadyAdded) {
 			setTimeout(async () => {
-				const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
+				const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || "[]");
 				const seriesData = {
 					id: seriesDetailData.id,
 					name: seriesDetailData.name,
@@ -154,21 +158,21 @@
 				};
 				storedSeries.push(seriesData);
 				localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedSeries));
-				localStorage.setItem(SERIES_ADDED_KEY, 'true');
+				localStorage.setItem(SERIES_ADDED_KEY, "true");
 				isAddedToHome = true;
-				if (data.user.id) await callWatchlistAPI('add');
+				if (data.user.id) await callWatchlistAPI("add");
 			}, 4000);
 		}
 	}
 
 	async function toggleHomeStatus() {
-		const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
+		const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || "[]");
 		if (isAddedToHome) {
 			const updatedSeries = storedSeries.filter((series) => series.id !== seriesDetailData.id);
 			localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(updatedSeries));
 			isAddedToHome = false;
 			if (data.user.id) {
-				await callWatchlistAPI('remove');
+				await callWatchlistAPI("remove");
 			}
 		} else {
 			const seriesData = {
@@ -183,15 +187,15 @@
 			storedSeries.push(seriesData);
 			localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedSeries));
 			isAddedToHome = true;
-			if (data.user.id) await callWatchlistAPI('add');
+			if (data.user.id) await callWatchlistAPI("add");
 		}
 	}
 
 	async function fetchEpisodes(seasonNumber) {
-		selectedSeason = seasonNumber;
+		selectEpisode.current = seasonNumber;
 		try {
-			let response = await fetch('/api/series/episodes', {
-				method: 'POST',
+			let response = await fetch("/api/series/episodes", {
+				method: "POST",
 				body: new URLSearchParams({
 					tv_id: seriesDetailData.id,
 					season_number: seasonNumber
@@ -201,14 +205,13 @@
 			episodes = result.episodes;
 			await updateProgressInDatabase();
 		} catch (error) {
-			console.error('Error fetching episodes:', error);
+			console.error("Error fetching episodes:", error);
 		}
 	}
 
 	async function selectEpisode(episodeId) {
-		selectedEpisode = episodeId;
+		selectedEpisode.current = episodeId;
 		isPlayerLoading = true; // Set loading state when changing episodes
-		saveProgressAndSelectedSource();
 		await updateProgressInDatabase();
 	}
 
@@ -216,39 +219,39 @@
 		localStorage.setItem(
 			STORAGE_KEY,
 			JSON.stringify({
-				season: selectedSeason,
-				episode: selectedEpisode,
-				source: selectedSource
+				season: selectedSeason.current,
+				episode: selectedEpisode.current,
+				source: selectedSource.current
 			})
 		);
 	}
-
 
 	function loadProgressAndSelectedSource() {
 		const progress = localStorage.getItem(STORAGE_KEY);
 		if (progress) {
 			const { season, episode, source } = JSON.parse(progress);
-			selectedSeason = season;
-			selectedEpisode = episode;
-			selectedSource = source || 1;
+			selectedSeason.current = season;
+			selectedEpisode.current = episode;
+			selectedSource.current = source || 1;
 		}
 	}
 
 	function changeSource(index) {
-		selectedSource = index;
-		isPlayerLoading = true; // Set loading state when changing sources
+		selectedSource.current = index;
+		isPlayerLoading = true;
 		saveProgressAndSelectedSource();
 	}
+
 	function handleIframeLoad() {
-		isPlayerLoading = false; // Remove loading state when iframe loads
+		isPlayerLoading = false;
 	}
-	
+
 	async function getProgress() {
 		if (user) {
 			try {
-				let response = await fetch('/api/series/watchlist/get', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
+				let response = await fetch("/api/series/watchlist/get", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
 						user_id: data.user.id,
 						tmdb_id: seriesDetailData.id
@@ -258,23 +261,23 @@
 					isAddedToHome = true;
 					let result = await response.json();
 					if (result.records) {
-						selectedSeason = result.records.season_id;
-						selectedEpisode = result.records.episode_id;
+						selectedSeason.current = result.records.season_id;
+						selectedEpisode.current = result.records.episode_id;
 						isAddedToHome = !isAddedToHome;
 					}
 				}
 			} catch (error) {
-				console.error('Error fetching watchlist data:', error);
+				console.error("Error fetching watchlist data:", error);
 			}
 		}
 	}
 
 	function previousEpisode() {
-		if (selectedEpisode > 1) {
-			selectEpisode(selectedEpisode - 1);
-		} else if (selectedSeason > 1) {
-			selectedSeason--;
-			fetchEpisodes(selectedSeason).then(() => {
+		if (selectedEpisode.current > 1) {
+			selectEpisode(selectedEpisode.current - 1);
+		} else if (selectedSeason.current > 1) {
+			selectedSeason.current--;
+			fetchEpisodes(selectedSeason.current).then(() => {
 				selectEpisode(episodes.length);
 			});
 		}
@@ -282,33 +285,55 @@
 
 	// Update the nextEpisode function to check air dates
 	function nextEpisode() {
-		if (selectedEpisode < episodes.length) {
-			const nextEpisodeData = episodes[selectedEpisode]; // selectedEpisode is 1-based
+		if (selectedEpisode.current < episodes.length) {
+			const nextEpisodeData = episodes[selectedEpisode.current]; // selectedEpisode is 1-based
 			if (new Date(nextEpisodeData.air_date) <= new Date()) {
-				selectEpisode(selectedEpisode + 1);
+				selectEpisode(selectedEpisode.current + 1);
 			}
-		} else if (selectedSeason < seriesDetailData.seasons.length) {
-			selectedSeason++;
-			fetchEpisodes(selectedSeason).then(() => {
-				// Check if first episode of new season is available
+		} else if (selectedSeason.current < seriesDetailData.seasons.length) {
+			selectedSeason.current++;
+			fetchEpisodes(selectedSeason.current).then(() => {
 				if (episodes.length > 0 && new Date(episodes[0].air_date) <= new Date()) {
 					selectEpisode(1);
 				}
 			});
 		}
 	}
+
 	function toggleSidebar() {
 		isSidebarVisible = !isSidebarVisible;
 	}
 
+	function handleMessage() {
+		if (data.type === "PLAYER_EVENT") {
+			const { event, currentTime, duration } = data.data;
+			console.log(`Player event: ${event} at ${currentTime}s of ${duration}s`);
+		}
+	}
+
 	onMount(async () => {
-		storeSeriesDataOnceWithDelay();
+		await fetchEpisodes(selectedSeason.current);
 		await getProgress();
-		loadProgressAndSelectedSource();
-		await fetchEpisodes(selectedSeason);
-		isAddedToHome = checkIfSeriesInHome();
+		setTimeout(async () => {
+			let series = await db.series_watch_history
+				.where("tmdb_id")
+				.equals(seriesDetailData.id)
+				.first();
+			if (!series) {
+				await db.series_watch_history.add({
+					tmdb_id: seriesDetailData.id,
+					poster_path: seriesDetailData.poster_path,
+					name: seriesDetailData.name,
+					vote_average: seriesDetailData.vote_average,
+					first_air_date: seriesDetailData.first_air_date,
+					number_of_seasons: seriesDetailData.number_of_seasons
+				});
+			}
+		});
 	});
 </script>
+
+<svelte:window on:message={handleMessage} />
 
 <div class="flex flex-col min-h-screen text-white bg-black">
 	<!-- Mobile Header -->
@@ -333,8 +358,8 @@
 			>
 				<Heart
 					size={20}
-					color={isAddedToHome ? '#fb2c36' : 'white'}
-					fill={isAddedToHome ? '#fb2c36' : 'none'}
+					color={isAddedToHome ? "#fb2c36" : "white"}
+					fill={isAddedToHome ? "#fb2c36" : "none"}
 				/>
 			</button>
 		{/if}
@@ -345,7 +370,7 @@
 			class={`
             fixed inset-y-0 left-0 z-50 w-80 bg-black border-r border-gray-800 transform transition-transform duration-300 ease-in-out
             md:relative md:translate-x-0 md:w-1/4 lg:w-1/5 md:h-full
-            ${isSidebarVisible ? 'translate-x-0' : '-translate-x-full'}
+            ${isSidebarVisible ? "translate-x-0" : "-translate-x-full"}
         `}
 		>
 			<div class="flex flex-col h-full">
@@ -368,10 +393,10 @@
 						>
 							<Heart
 								size={20}
-								color={isAddedToHome ? '#fb2c36' : 'white'}
-								fill={isAddedToHome ? '#fb2c36' : 'none'}
+								color={isAddedToHome ? "#fb2c36" : "white"}
+								fill={isAddedToHome ? "#fb2c36" : "none"}
 							/>
-							<span class="text-sm">{isAddedToHome ? 'Added to Home' : 'Add to Home'}</span>
+							<span class="text-sm">{isAddedToHome ? "Added to Home" : "Add to Home"}</span>
 						</button>
 					{/if}
 					<!-- Season Selection -->
@@ -383,14 +408,16 @@
 							Seasons
 						</h3>
 						<select
-							bind:value={selectedSeason}
-							onchange={() => fetchEpisodes(selectedSeason)}
+							bind:value={selectedSeason.current}
+							onchange={() => fetchEpisodes(selectedSeason.current)}
 							class="w-full p-3 text-white bg-gray-800 border border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
 						>
 							{#each seriesDetailData.seasons as season}
-								<option value={season.season_number}>
-									Season {season.season_number}
-								</option>
+								{#if season.season_number !== 0}
+									<option value={season.season_number}>
+										Season {season.season_number}
+									</option>
+								{/if}
 							{/each}
 						</select>
 					</div>
@@ -405,52 +432,54 @@
 						<!-- Applied no-scrollbar class here -->
 						<div class="space-y-2 max-h-96 overflow-y-auto no-scrollbar">
 							{#each episodes as episode, index}
-								<button
-									onclick={() => selectEpisode(index + 1)}
-									class={`w-full p-3 text-left transition-all duration-200 rounded-lg border flex items-start gap-4 ${
-										selectedEpisode === index + 1
-											? 'bg-white text-black border-white'
-											: new Date(episode.air_date) > new Date()
-												? 'bg-gray-900 text-gray-500 border-gray-700 cursor-not-allowed'
-												: 'bg-gray-800 text-white border-gray-700 hover:bg-gray-700 hover:border-gray-600'
-									}`}
-									title={new Date(episode.air_date) > new Date()
-										? 'This episode is not live yet!'
-										: ''}
-								>
-									<!-- Episode Still Image - Increased size -->
-									{#if episode.still_path}
-										<img
-											src={`https://image.tmdb.org/t/p/w300${episode.still_path}`}
-											alt={`Episode ${episode.episode_number} Still`}
-											class="w-24 h-auto rounded flex-shrink-0 object-cover aspect-video"
-										/>
-									{:else}
-										<!-- Placeholder if no image - Increased size -->
-										<div
-											class="w-24 h-14 rounded flex-shrink-0 bg-gray-700 flex items-center justify-center"
-										>
-											<!-- Increased width (w-24) and height (h-14) -->
-											<span class="text-xs text-gray-500">No Image</span>
+								{#if episode !== 0}
+									<button
+										onclick={() => selectEpisode(index + 1)}
+										class={`w-full p-3 text-left transition-all duration-200 rounded-lg border flex items-start gap-4 ${
+											selectedEpisode.current === index + 1
+												? "bg-white text-black border-white"
+												: new Date(episode.air_date) > new Date()
+													? "bg-gray-900 text-gray-500 border-gray-700 cursor-not-allowed"
+													: "bg-gray-800 text-white border-gray-700 hover:bg-gray-700 hover:border-gray-600"
+										}`}
+										title={new Date(episode.air_date) > new Date()
+											? "This episode is not live yet!"
+											: ""}
+									>
+										<!-- Episode Still Image - Increased size -->
+										{#if episode.still_path}
+											<img
+												src={`https://image.tmdb.org/t/p/w300${episode.still_path}`}
+												alt={`Episode ${episode.episode_number} Still`}
+												class="w-24 h-auto rounded flex-shrink-0 object-cover aspect-video"
+											/>
+										{:else}
+											<!-- Placeholder if no image - Increased size -->
+											<div
+												class="w-24 h-14 rounded flex-shrink-0 bg-gray-700 flex items-center justify-center"
+											>
+												<!-- Increased width (w-24) and height (h-14) -->
+												<span class="text-xs text-gray-500">No Image</span>
+											</div>
+										{/if}
+										<!-- Episode Details -->
+										<div class="flex-1 min-w-0 flex flex-col">
+											<div class="font-medium truncate">{episode.name}</div>
+											<div class="flex items-center gap-2 mt-1 text-xs text-gray-400">
+												<span>Episode {episode.episode_number}</span>
+												<span>&#8226;</span>
+												<span>{episode.air_date}</span>
+											</div>
+											<!-- Optional: Add a brief overview snippet if available and space allows -->
+											<!-- <p class="text-xs text-gray-500 mt-1 truncate">{episode.overview || 'No overview available.'}</p> -->
 										</div>
-									{/if}
-									<!-- Episode Details -->
-									<div class="flex-1 min-w-0 flex flex-col">
-										<div class="font-medium truncate">{episode.name}</div>
-										<div class="flex items-center gap-2 mt-1 text-xs text-gray-400">
-											<span>Episode {episode.episode_number}</span>
-											<span>&#8226;</span>
-											<span>{episode.air_date}</span>
-										</div>
-										<!-- Optional: Add a brief overview snippet if available and space allows -->
-										<!-- <p class="text-xs text-gray-500 mt-1 truncate">{episode.overview || 'No overview available.'}</p> -->
-									</div>
-									<!-- Play Icon for Selected Episode -->
-									{#if selectedEpisode === index + 1}
-										<Play size={18} class="flex-shrink-0 self-center" />
-										<!-- Slightly larger play icon -->
-									{/if}
-								</button>
+										<!-- Play Icon for Selected Episode -->
+										{#if selectedEpisode === index + 1}
+											<Play size={18} class="flex-shrink-0 self-center" />
+											<!-- Slightly larger play icon -->
+										{/if}
+									</button>
+								{/if}
 							{/each}
 						</div>
 					</div>
@@ -467,12 +496,12 @@
 						{seriesDetailData.name}
 					</h2>
 					<div class="flex items-center gap-2 text-sm text-gray-400">
-						<span>Season {selectedSeason}</span>
+						<span>Season {selectedSeason.current}</span>
 						<span>•</span>
-						<span>Episode {selectedEpisode}</span>
-						{#if episodes[selectedEpisode - 1]}
+						<span>Episode {selectedEpisode.current}</span>
+						{#if episodes[selectedEpisode.current - 1]}
 							<span>•</span>
-							<span>{episodes[selectedEpisode - 1].name}</span>
+							<span>{episodes[selectedEpisode.current - 1].name}</span>
 						{/if}
 					</div>
 				</div>
@@ -491,7 +520,7 @@
 					{/if}
 					<!-- Video Player -->
 					<iframe
-						src={iframeSources[selectedSource]}
+						src={iframeSources[selectedSource.current]}
 						class="w-full h-full border-2 border-gray-700 rounded-lg shadow-lg"
 						allowfullscreen
 						loading="lazy"
@@ -507,7 +536,7 @@
 					<div class="flex items-center gap-2">
 						<button
 							onclick={previousEpisode}
-							disabled={selectedSeason === 1 && selectedEpisode === 1}
+							disabled={selectedSeason.current === 1 && selectedEpisode.current === 1}
 							class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg shadow hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
 						>
 							<ChevronLeft size={16} />
@@ -527,8 +556,8 @@
 							class={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg shadow transition-colors
                             ${
 															isDisabled
-																? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-																: 'text-gray-700 bg-gray-200 hover:bg-gray-300'
+																? "bg-gray-100 text-gray-400 cursor-not-allowed"
+																: "text-gray-700 bg-gray-200 hover:bg-gray-300"
 														}`}
 						>
 							<span class="hidden sm:inline">Next</span>
@@ -541,9 +570,9 @@
 						{#each iframeSources as source, index}
 							<button
 								class={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-									index === selectedSource
-										? 'bg-white text-black'
-										: 'bg-gray-700 text-white hover:bg-gray-600'
+									index === selectedSource.current
+										? "bg-white text-black"
+										: "bg-gray-700 text-white hover:bg-gray-600"
 								}`}
 								onclick={() => changeSource(index)}
 							>
@@ -612,15 +641,15 @@
 					</div>
 				</div>
 				<!-- Current Episode Details -->
-				{#if episodes[selectedEpisode - 1]}
+				{#if episodes[selectedEpisode.current - 1]}
 					<div class="p-6 bg-gray-900 rounded-lg">
 						<h3 class="flex items-center gap-2 mb-4 text-xl font-bold">
 							<Play size={20} />
 							Current Episode
 						</h3>
-						<h4 class="text-lg font-semibold mb-2">{episodes[selectedEpisode - 1].name}</h4>
+						<h4 class="text-lg font-semibold mb-2">{episodes[selectedEpisode.current - 1].name}</h4>
 						<p class="text-gray-300 mb-4 leading-relaxed">
-							{episodes[selectedEpisode - 1].overview}
+							{episodes[selectedEpisode.current - 1].overview}
 						</p>
 						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<div>
@@ -630,7 +659,7 @@
 									<Calendar size={14} />
 									Air Date
 								</h4>
-								<p class="text-white">{episodes[selectedEpisode - 1].air_date}</p>
+								<p class="text-white">{episodes[selectedEpisode.current - 1].air_date}</p>
 							</div>
 							<div>
 								<h4
@@ -642,7 +671,7 @@
 								<div class="flex items-center gap-2">
 									<Star size={16} class="text-yellow-500" fill="currentColor" />
 									<span class="text-white font-medium"
-										>{episodes[selectedEpisode - 1].vote_average.toFixed(1)}</span
+										>{episodes[selectedEpisode.current - 1].vote_average.toFixed(1)}</span
 									>
 									<span class="text-gray-400">/ 10</span>
 								</div>
@@ -654,7 +683,7 @@
 		</div>
 	</div>
 </div>
-<!-- Sidebar Overlay for Mobile -->
+
 {#if isSidebarVisible}
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div

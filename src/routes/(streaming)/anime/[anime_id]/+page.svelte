@@ -1,6 +1,7 @@
 <script>
-	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { onMount } from "svelte";
+	import { page } from "$app/stores";
+	import { PersistedState } from "runed";
 	import {
 		ChevronLeft,
 		ChevronRight,
@@ -12,27 +13,27 @@
 		Menu,
 		X,
 		Heart
-	} from 'lucide-svelte';
-	import { toast } from 'svelte-sonner'; // Assuming you want to use the same toast library
+	} from "lucide-svelte";
+	import { toast } from "svelte-sonner";
 
 	let { data } = $props();
 	let anime_data = data.anime_data;
 	let anime_id = $page.params.anime_id;
 
 	// State Management (using runes or equivalent)
-	let dub = $state(true);
-	let episode = $state(1);
-	let selectedSource = $state(0);
-	let lang = $state('dub');
-	let iframeKey = $state(0); // Add this to force iframe refresh
-	let isPlayerLoading = $state(true); // Track loading state
-	let isSidebarVisible = $state(false); // Start hidden on mobile
-	let user = data?.user; // Assuming user data might be passed if needed for future features
+	const dub = new PersistedState(`dub_${anime_id}`, 0);
+	const episode = new PersistedState(`episode_${anime_id}`, 1);
+	const selectedSource = new PersistedState(`selectedSource_${anime_id}`, 0);
+	const lang = new PersistedState(`land_${anime_id}`, "dub");
+	const iframeKey = new PersistedState(`iframekey_${anime_id}`, 0);
 
-	// Derived State
+	let isPlayerLoading = $state(true);
+	let isSidebarVisible = $state(false);
+	let user = data?.user;
+
 	let iframeSources = $derived([
-		`https://vidsrc.cc/v2/embed/anime/ani${anime_id}/${episode}/${lang}`,
-		`https://player.videasy.net/anime/${anime_id}/${episode}?dub=${dub ? true : false}`
+		`https://vidsrc.cc/v2/embed/anime/ani${anime_id}/${episode.current}/${lang.current}`,
+		`https://player.videasy.net/anime/${anime_id}/${episode.current}?dub=${dub.current ? true : false}`
 	]);
 
 	let chunkSize = 50;
@@ -47,63 +48,43 @@
 	});
 	let dropdownIndex = $state(0);
 
-	// Function to change language (Dub/Sub)
 	function changeLang() {
-		if (dub) {
-			lang = 'sub';
-			dub = false;
+		if (dub.current) {
+			lang.current = "sub";
+			dub.current = false;
 		} else {
-			lang = 'dub';
-			dub = true;
+			lang.current = "dub";
+			dub.current = true;
 		}
-		// Force iframe refresh by changing key
-		iframeKey++;
-		isPlayerLoading = true; // Set loading state when changing lang
+		iframeKey.current++;
+		isPlayerLoading = true;
 	}
 
-	// Function to change video source
 	function changeSource(index) {
-		selectedSource = index;
-		// Force iframe refresh when changing source
-		iframeKey++;
-		isPlayerLoading = true; // Set loading state when changing source
+		selectedSource.current = index;
+		iframeKey.current++;
+		isPlayerLoading = true;
 	}
 
-	// Function to change episode
 	function changeEpisode(newEpisode) {
-		episode = newEpisode;
-		iframeKey++;
-		isPlayerLoading = true; // Set loading state when changing episode
+		episode.current = newEpisode;
+		iframeKey.current++;
+		isPlayerLoading = true;
 	}
 
-	// Function to handle iframe load event
 	function handleIframeLoad() {
-		isPlayerLoading = false; // Remove loading state when iframe loads
+		isPlayerLoading = false;
 	}
 
-	// Toggle sidebar visibility (mobile)
 	function toggleSidebar() {
 		isSidebarVisible = !isSidebarVisible;
 	}
 
-	// Example function for adding to watchlist/home (similar to series)
-	// You would need to implement the actual logic and API calls
-	let isAddedToHome = $state(false); // Placeholder state
+	let isAddedToHome = $state(false);
 	async function toggleHomeStatus() {
-		// Implement your logic here (localStorage, API calls)
 		isAddedToHome = !isAddedToHome;
-		toast.success(isAddedToHome ? 'Added to Home (Mock)' : 'Removed from Home (Mock)');
-		// Example:
-		// if (isAddedToHome) {
-		//   // Remove from list
-		// } else {
-		//   // Add to list
-		// }
+		toast.success(isAddedToHome ? "Added to Home (Mock)" : "Removed from Home (Mock)");
 	}
-
-	onMount(() => {
-		// Any initial setup if needed
-	});
 </script>
 
 <div class="flex flex-col min-h-screen text-white bg-black">
@@ -130,8 +111,8 @@
 			>
 				<Heart
 					size={20}
-					color={isAddedToHome ? '#fb2c36' : 'white'}
-					fill={isAddedToHome ? '#fb2c36' : 'none'}
+					color={isAddedToHome ? "#fb2c36" : "white"}
+					fill={isAddedToHome ? "#fb2c36" : "none"}
 				/>
 			</button>
 		{/if}
@@ -143,7 +124,7 @@
 			class={`
       fixed inset-y-0 left-0 z-50 w-80 bg-black border-r border-gray-800 transform transition-transform duration-300 ease-in-out
       md:relative md:translate-x-0 md:w-1/4 lg:w-1/5 md:h-full
-      ${isSidebarVisible ? 'translate-x-0' : '-translate-x-full'}
+      ${isSidebarVisible ? "translate-x-0" : "-translate-x-full"}
     `}
 		>
 			<div class="flex flex-col h-full">
@@ -168,17 +149,17 @@
 						</h3>
 						<div class="flex rounded-lg overflow-hidden">
 							<button
-								class={`flex-1 px-4 py-2 text-sm font-medium ${!dub ? 'bg-white text-black' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+								class={`flex-1 px-4 py-2 text-sm font-medium ${!dub.current ? "bg-white text-black" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}
 								onclick={() => {
-									if (dub) changeLang();
+									if (dub.current) changeLang();
 								}}
 							>
 								Subtitle
 							</button>
 							<button
-								class={`flex-1 px-4 py-2 text-sm font-medium ${dub ? 'bg-white text-black' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+								class={`flex-1 px-4 py-2 text-sm font-medium ${dub.current ? "bg-white text-black" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}
 								onclick={() => {
-									if (!dub) changeLang();
+									if (!dub.current) changeLang();
 								}}
 							>
 								Dubbed
@@ -201,9 +182,9 @@
 							{#each Array(anime_data.episodes) as _, i}
 								<button
 									class={`aspect-square flex items-center justify-center text-sm font-medium rounded-lg transition-all ${
-										episode === i + 1
-											? 'bg-white text-black'
-											: 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+										episode.current === i + 1
+											? "bg-white text-black"
+											: "bg-gray-700 text-gray-300 hover:bg-gray-600"
 									}`}
 									onclick={() => changeEpisode(i + 1)}
 								>
@@ -226,7 +207,7 @@
 						{anime_data.title.userPreferred || anime_data.title.romaji || anime_data.title.english}
 					</h2>
 					<div class="flex items-center gap-2 text-sm text-gray-400">
-						<span>Episode {episode}</span>
+						<span>Episode {episode.current}</span>
 						<!-- Add episode title if available from data -->
 						<!-- {#if episodes[selectedEpisode - 1]} -->
 						<!--   <span>&#8226;</span> -->
@@ -250,7 +231,7 @@
 					<!-- Video Player -->
 					<iframe
 						key={iframeKey}
-						src={iframeSources[selectedSource]}
+						src={iframeSources[selectedSource.current]}
 						class="w-full h-full border-2 border-gray-700 rounded-lg shadow-lg"
 						allowfullscreen
 						loading="lazy"
@@ -269,9 +250,9 @@
 						{#each iframeSources as source, index}
 							<button
 								class={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-									index === selectedSource
-										? 'bg-white text-black'
-										: 'bg-gray-700 text-white hover:bg-gray-600'
+									index === selectedSource.current
+										? "bg-white text-black"
+										: "bg-gray-700 text-white hover:bg-gray-600"
 								}`}
 								onclick={() => changeSource(index)}
 							>
@@ -295,8 +276,8 @@
 					</h3>
 					<p class="text-gray-300 mb-6 leading-relaxed">
 						{@html anime_data.description
-							? anime_data.description.replace(/<br\s*\/?>/gi, ' ')
-							: 'No description available.'}
+							? anime_data.description.replace(/<br\s*\/?>/gi, " ")
+							: "No description available."}
 					</p>
 					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 						<div>
@@ -311,7 +292,7 @@
 								<span class="text-white font-medium"
 									>{anime_data.averageScore
 										? (anime_data.averageScore / 10).toFixed(1)
-										: 'N/A'}</span
+										: "N/A"}</span
 								>
 								<span class="text-gray-400">/ 10</span>
 							</div>
@@ -368,7 +349,7 @@
 												alt={relation.title?.userPreferred ||
 													relation.title?.english ||
 													relation.title?.romaji ||
-													'Anime Cover'}
+													"Anime Cover"}
 												class="w-full h-32 object-cover"
 												loading="lazy"
 											/>
@@ -378,7 +359,7 @@
 												{relation.title?.userPreferred ||
 													relation.title?.english ||
 													relation.title?.romaji ||
-													'Unknown Title'}
+													"Unknown Title"}
 											</p>
 										</div>
 									</div>
@@ -400,14 +381,14 @@
 									{#if charEdge.node?.image?.large}
 										<img
 											src={charEdge.node.image.large}
-											alt={charEdge.node.name?.full || 'Character'}
+											alt={charEdge.node.name?.full || "Character"}
 											class="w-full h-32 object-cover"
 											loading="lazy"
 										/>
 									{/if}
 									<div class="p-3">
 										<p class="text-sm font-medium line-clamp-2">
-											{charEdge.node?.name?.full || 'Unknown'}
+											{charEdge.node?.name?.full || "Unknown"}
 										</p>
 										<p class="text-xs text-gray-400 mt-1">{charEdge.role}</p>
 									</div>

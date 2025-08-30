@@ -3,11 +3,9 @@ import { fail, redirect } from '@sveltejs/kit';
 export const actions = {
 	default: async ({ locals, request }) => {
 		const formData = await request.formData();
-
 		const email = formData.get('email');
 		const password = formData.get('password');
 		const password2 = formData.get('password2');
-
 		if (!email || !password || password !== password2) {
 			return fail(400, {
 				emailRequired: !email,

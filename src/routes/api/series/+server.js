@@ -6,7 +6,6 @@ const BASE_URL_SEARCH = 'https://api.themoviedb.org/3';
 export async function POST(event) {
 	try {
 		const data = await event.request.formData();
-
 		const search = data.get('search');
 		const page = parseInt(data.get('page')) || 1; // Default to page 1 if not provided
 

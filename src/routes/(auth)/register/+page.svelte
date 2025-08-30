@@ -1,19 +1,19 @@
 <script>
-	import { page } from '$app/stores';
+	import { page } from "$app/stores";
 	let { data, form } = $props();
 
-	let email = $state('');
-	let password = $state('');
-	let password2 = $state('');
+	let email = $state("");
+	let password = $state("");
+	let password2 = $state("");
 	let buttonDisabled = $state(true);
 
 	$effect(() => {
 		if (password !== password2 || !password || !password2 || password.length < 8) {
 			buttonDisabled = true;
 			if (password.length < 8 && password.length !== 0) {
-				errorMessage = 'Password should be at least 8 characters long';
+				errorMessage = "Password should be at least 8 characters long";
 			} else if (password !== password2) {
-				errorMessage = 'Passwords do not match';
+				errorMessage = "Passwords do not match";
 			}
 		} else {
 			buttonDisabled = false;

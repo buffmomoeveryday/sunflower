@@ -1,43 +1,130 @@
 <script>
-	import { goto } from '$app/navigation';
-	import { redirect } from '@sveltejs/kit';
+	import { goto } from "$app/navigation";
+	import { db } from "$lib/db/db";
+	import { watch } from "runed";
+	import { onMount } from "svelte";
+	import { Bookmark } from "lucide-svelte";
 
-	let { id, poster_path, title, vote_average, release_date, genre_ids = [] } = $props();
+	let { id, tmdb_id, poster_path, title, vote_average, release_date, genre_ids = [] } = $props();
 
-	// Format rating with proper handling for missing values
+	let showTrailer = $state(false);
+	let trailer_key = $state("");
+
+	let isBookmarked = $state(false);
+
+	async function toggleBookmark() {
+		try {
+			let marked = await db.movies_bookmark.where("tmdb_id").equals(id).first();
+
+			if (marked) {
+				await db.movies_bookmark.delete(marked.id);
+				isBookmarked = false;
+			} else {
+				await db.movies_bookmark.add({
+					tmdb_id: id,
+					poster_path: poster_path,
+					title: title,
+					vote_average: vote_average,
+					release_date: release_date,
+					genre_ids: genre_ids
+				});
+				isBookmarked = true;
+			}
+		} catch (error) {
+			console.error("Error toggling bookmark:", error);
+		}
+	}
+
 	const formatRating = (rating) => {
-		if (!rating || rating === 0) return 'N/A';
+		if (!rating || rating === 0) return "N/A";
 		return Number(rating).toFixed(1);
 	};
 
-	// Get rating color based on score
 	const getRatingColor = (rating) => {
-		if (!rating || rating === 0) return 'bg-gray-600';
-		if (rating >= 8) return 'bg-green-600';
-		if (rating >= 6) return 'bg-yellow-600';
-		if (rating >= 4) return 'bg-orange-600';
-		return 'bg-red-600';
+		if (!rating || rating === 0) return "bg-gray-600";
+		if (rating >= 8) return "bg-green-600";
+		if (rating >= 6) return "bg-yellow-600";
+		if (rating >= 4) return "bg-orange-600";
+		return "bg-red-600";
 	};
 
-	// Format release year
 	const getYear = (date) => {
-		if (!date) return '';
+		if (!date) return "";
 		return new Date(date).getFullYear();
 	};
 
 	let rating = formatRating(vote_average);
 	let ratingColor = getRatingColor(vote_average);
 	let year = getYear(release_date);
+
+	watch(
+		() => showTrailer,
+		async () => {
+			if (showTrailer) {
+				const url = `/api/movie/trailer?tmdb_id=${id}`;
+				trailer_key = await fetch(url).then(async (response) => {
+					if (!response.ok) {
+						return null;
+					}
+					const resp = await response.json();
+					return resp.key;
+				});
+			}
+		}
+	);
+
+	onMount(async () => {
+		try {
+			let book = await db.movies_bookmark.where("tmdb_id").equals(id).first();
+			if (book) {
+				isBookmarked = true;
+			}
+		} catch (error) {
+			console.error("Error checking bookmark status:", error);
+		}
+	});
 </script>
 
+<svelte:window
+	on:keydown={(e) => {
+		if (showTrailer) {
+			if (e.keyCode === 27) {
+				showTrailer = false;
+			}
+		}
+	}}
+/>
+
 <div class="group relative w-full max-w-sm mx-auto">
-	<!-- Main card container -->
 	<div
 		class="relative overflow-hidden bg-gray-900/80 backdrop-blur-sm rounded-2xl shadow-lg transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-2 border border-gray-800/50"
 	>
-		<a href="/movie/{id}" class="block text-white no-underline">
-			<!-- Poster container with aspect ratio -->
-			<div class="relative w-full aspect-[2/3] overflow-hidden">
+		<div class="block text-white no-underline">
+			<div class="absolute top-3 left-3 z-10">
+				<button
+					onclick={toggleBookmark}
+					class="bg-black/50 hover:bg-black/80 text-white p-2 rounded-full shadow-md transition-colors duration-300"
+				>
+					{#if isBookmarked}
+						<Bookmark color="yellow" strokeWidth={3} fill="yellow" />
+					{:else}
+						<Bookmark />
+					{/if}
+				</button>
+			</div>
+
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div
+				onclick={() => {
+					if (tmdb_id) {
+						goto(`/movie/${tmdb_id}`);
+					} else {
+						goto(`/movie/${id}`);
+					}
+				}}
+				class="relative w-full aspect-[2/3] overflow-hidden"
+			>
 				<img
 					src="https://image.tmdb.org/t/p/w500/{poster_path}"
 					alt={title}
@@ -45,19 +132,17 @@
 					loading="lazy"
 				/>
 
-				<!-- Gradient overlay -->
 				<div
 					class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
 				></div>
 
-				<!-- Rating badge -->
 				<div class="absolute top-3 right-3 z-10">
 					<div
 						class="flex items-center justify-center min-w-[48px] h-8 px-2 {ratingColor} rounded-full shadow-lg backdrop-blur-sm"
 					>
 						<span class="text-white text-sm font-bold flex items-center gap-1">
 							{rating}
-							{#if rating !== 'N/A'}
+							{#if rating !== "N/A"}
 								<svg class="w-3 h-3 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
 									<path
 										d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
@@ -68,7 +153,6 @@
 					</div>
 				</div>
 
-				<!-- Play button overlay (appears on hover) -->
 				<div
 					class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
 				>
@@ -84,16 +168,12 @@
 				</div>
 			</div>
 
-			<!-- Content section -->
-			<div class="p-4 space-y-2">
-				<!-- Title -->
+			<div class="p-4 space-y-3">
 				<h3
 					class="text-white font-semibold text-base leading-tight line-clamp-2 group-hover:text-blue-400 transition-colors duration-300"
 				>
 					{title}
 				</h3>
-
-				<!-- Movie details -->
 				<div class="flex items-center justify-between text-sm text-gray-400">
 					{#if year}
 						<span class="flex items-center gap-1">
@@ -109,7 +189,6 @@
 						</span>
 					{/if}
 
-					<!-- Movie icon -->
 					<span class="flex items-center gap-1">
 						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
@@ -122,15 +201,52 @@
 						Movie
 					</span>
 				</div>
+
+				<!-- Buttons -->
+				<div class="flex gap-2">
+					<button
+						type="button"
+						class="flex-1 bg-pink-500 hover:bg-pink-700 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow-md transition-colors duration-300"
+						onclick={() => (showTrailer = true)}
+					>
+						Trailer
+					</button>
+				</div>
 			</div>
-		</a>
+		</div>
 	</div>
 </div>
+
+<!-- Trailer Modal -->
+{#if showTrailer}
+	<div class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+		<div
+			class="relative w-full max-w-3xl aspect-video bg-black rounded-2xl shadow-lg overflow-hidden"
+		>
+			<button
+				class="absolute top-3 right-3 bg-black/60 hover:bg-black text-white rounded-full p-2"
+				onclick={() => (showTrailer = false)}
+			>
+				✖
+			</button>
+
+			<iframe
+				class="w-full h-full"
+				src="https://www.youtube.com/embed/{trailer_key}?autoplay=1"
+				title="Trailer"
+				frameborder="0"
+				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+				allowfullscreen
+			></iframe>
+		</div>
+	</div>
+{/if}
 
 <style>
 	.line-clamp-2 {
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}

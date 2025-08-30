@@ -12,8 +12,8 @@ export async function load({ params }) {
 	let popularSeries = await fetchWithCache(popularUrl, `airingToday-${Date.now()}`);
 
 	return {
-		trendingSeries: trendingSeries,
+		popularSeries: popularSeries,
 		topRatedSeries: topRatedSeries,
-		popularSeries: popularSeries
+		trendingSeries: trendingSeries,
 	};
 }

@@ -1,448 +1,281 @@
 <script>
-	import MovieCard from '$lib/components/card/MovieCard.svelte';
-	import SeriesCard from '$lib/components/card/SeriesCard.svelte';
-	import AnimeCard from '$lib/components/card/AnimeCard.svelte';
-	import { MoveLeft, MoveRight, Search, Clock, X, Filter } from 'lucide-svelte';
-	import { onMount } from 'svelte';
+	import { goto } from "$app/navigation";
+	import { Search, MoveLeft, MoveRight } from "lucide-svelte";
+	import { tick } from "svelte";
 
-	let search = $state('');
-	let loading = $state(false);
-	let movieResults = $state([]);
-	let errorMessage = $state('');
-	let currentPage = $state(1);
-	let totalPages = $state(1);
-	let videoType = $state('tv');
-	let previousSearches = $state([]);
-	let showFilters = $state(false);
-	let genres = $state([]);
-	let selectedGenre = $state('');
-	let sortBy = $state('popularity.desc');
-	let year = $state('');
+	let search = "";
+	let loading = false;
+	let results = [];
+	let errorMessage = "";
+	let currentPage = 1;
+	let totalPages = 1;
+	let hasSearched = false;
 
-	const searchMovie = async (event, page = 1) => {
-		event?.preventDefault();
-		if (!search.trim()) return;
+	let sort = "best";
+	let filter = "all";
+	let debounceTimer;
+
+	const RESULTS_PER_PAGE = 20;
+
+	const searchMovie = async (page = 1) => {
+		if (!search.trim()) {
+			results = [];
+			hasSearched = false;
+			return;
+		}
 
 		loading = true;
-		errorMessage = '';
+		errorMessage = "";
+		hasSearched = true;
 
 		const formData = new FormData();
-		formData.append('search', search.trim());
-		formData.append('page', page);
-		formData.append('videoType', videoType);
-		// formData.append('bollywood', bollywood || null);
-		formData.append('genre', selectedGenre);
-		formData.append('sortBy', sortBy);
-		formData.append('year', year);
+		formData.append("search", search.trim());
+		formData.append("page", page);
+		formData.append("sort", sort);
+		formData.append("filter", filter);
+		formData.append("per_page", RESULTS_PER_PAGE); // Explicitly request 20 results per page
 
 		try {
-			const response = await fetch('/api/movie', {
-				method: 'POST',
+			const response = await fetch("/api/tmdbSearch", {
+				method: "POST",
 				body: formData
 			});
-			if (!response.ok) {
-				throw new Error(`Response status: ${response.status}`);
-			}
+
+			if (!response.ok) throw new Error(`Response status: ${response.status}`);
 			const json = await response.json();
 
-			console.log(json);
-
 			if (json.success) {
-				movieResults = json.searchResults;
-				totalPages = json.total_pages;
-				currentPage = json.current_page;
-
-				const searchEntry = {
-					query: search.trim(),
-					type: videoType,
-					timestamp: Date.now()
-				};
-
-				previousSearches = previousSearches.filter(
-					(entry) => !(entry.query === search.trim() && entry.type === videoType)
+				// Filter results based on selected filter
+				let filteredResults = json.searchResults.filter(
+					(item) =>
+						(filter === "all" && (item.media_type === "movie" || item.media_type === "tv")) ||
+						(filter === "movies" && item.media_type === "movie") ||
+						(filter === "tv" && item.media_type === "tv")
 				);
 
-				previousSearches = [searchEntry, ...previousSearches];
-				if (previousSearches.length > 8) {
-					previousSearches = previousSearches.slice(0, 8);
+				// Ensure we only show up to RESULTS_PER_PAGE items
+				results = filteredResults.slice(0, RESULTS_PER_PAGE);
+
+				// Calculate total pages based on total results and RESULTS_PER_PAGE
+				const totalResults = json.total_results || filteredResults.length;
+				totalPages = Math.ceil(totalResults / RESULTS_PER_PAGE);
+				currentPage = page;
+
+				// If we have fewer results than expected and we're not on the first page,
+				// it might mean we've reached the end
+				if (results.length < RESULTS_PER_PAGE && page > 1) {
+					totalPages = page;
 				}
-				localStorage.setItem('previousSearches', JSON.stringify(previousSearches));
+
+				if (page === 2) {
+					await tick();
+					document.getElementById("results-section")?.scrollIntoView({ behavior: "smooth" });
+				}
 			} else {
 				errorMessage = json.error;
-				movieResults = [];
+				results = [];
+				totalPages = 1;
+				currentPage = 1;
 			}
-		} catch (error) {
-			errorMessage = 'Failed to fetch search results. Please try again.';
-			movieResults = [];
-			console.error(error);
+		} catch (err) {
+			errorMessage = "Failed to fetch search results. Please try again.";
+			results = [];
+			totalPages = 1;
+			currentPage = 1;
+			console.error(err);
 		} finally {
 			loading = false;
 		}
 	};
 
+	// Debounced live search
+	const handleInput = () => {
+		clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(() => {
+			currentPage = 1;
+			searchMovie(1);
+		}, 500);
+	};
+
 	const changePage = (newPage) => {
 		if (newPage >= 1 && newPage <= totalPages && !loading) {
-			searchMovie(null, newPage);
+			searchMovie(newPage);
 		}
 	};
 
-	const performPreviousSearch = (query, type) => {
-		search = query;
-		videoType = type;
-		searchMovie(null, 1);
+	// Reset pagination when filters change
+	const handleFilterChange = (newSort, newFilter) => {
+		if (newSort !== undefined) sort = newSort;
+		if (newFilter !== undefined) filter = newFilter;
+		currentPage = 1;
+		searchMovie(1);
 	};
-
-	const clearPreviousSearches = () => {
-		previousSearches = [];
-		localStorage.removeItem('previousSearches');
-	};
-
-	const removeSearch = (index) => {
-		previousSearches.splice(index, 1);
-		localStorage.setItem('previousSearches', JSON.stringify(previousSearches));
-	};
-
-	const getTypeLabel = (type) => {
-		switch (type) {
-			case 'movie':
-				return 'Movie';
-			case 'tv':
-				return 'Series';
-			case 'anime':
-				return 'Anime';
-			default:
-				return type;
-		}
-	};
-
-	const formatTimeAgo = (timestamp) => {
-		const now = Date.now();
-		const diff = now - timestamp;
-		const minutes = Math.floor(diff / 60000);
-		const hours = Math.floor(diff / 3600000);
-		const days = Math.floor(diff / 86400000);
-
-		if (days > 0) return `${days}d ago`;
-		if (hours > 0) return `${hours}h ago`;
-		if (minutes > 0) return `${minutes}m ago`;
-		return 'Just now';
-	};
-
-	onMount(() => {
-		const stored = localStorage.getItem('previousSearches');
-		if (stored) {
-			try {
-				previousSearches = JSON.parse(stored);
-			} catch (e) {
-				previousSearches = [];
-			}
-		}
-	});
-
-	// Clear results when changing video type
-	$effect(() => {
-		if (videoType) {
-			movieResults = [];
-			currentPage = 1;
-			totalPages = 1;
-			errorMessage = '';
-		}
-	});
 </script>
 
-<div class="min-h-screen bg-black">
-	<div class="container mx-auto px-4 py-8">
-		<!-- Header -->
-		<div class="text-center mb-8">
-			<h1 class="text-4xl font-bold text-white mb-2">
-				{videoType === 'anime' ? '🎌 Anime' : videoType === 'movie' ? '🎬 Movie' : '📺 Series'} Search
-			</h1>
-			<p class="text-gray-400">
-				{videoType === 'anime'
-					? 'Discover anime from AniList'
-					: 'Discover movies and series from TMDB'}
-			</p>
+<div class="min-h-screen bg-black text-white p-6">
+	<div class="max-w-6xl mx-auto">
+		<!-- Search Bar -->
+		<div class="flex gap-3 mb-6">
+			<input
+				type="text"
+				bind:value={search}
+				on:input={handleInput}
+				placeholder="Search movies & TV shows..."
+				class="flex-1 p-3 rounded-xl bg-gray-900 border border-gray-700 text-white"
+			/>
+			{#if loading}
+				<div class="flex items-center px-4">
+					<div
+						class="w-5 h-5 border-2 border-white rounded-full animate-spin border-t-transparent"
+					></div>
+				</div>
+			{/if}
 		</div>
 
-		<!-- Search Form -->
-		<div class="max-w-4xl mx-auto mb-8">
-			<form
-				onsubmit={searchMovie}
-				class="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 shadow-xl"
+		<!-- Filters -->
+		<div class="flex flex-wrap items-center gap-3 mb-6">
+			<span class="text-gray-400">Sort:</span>
+			<button
+				class="px-4 py-2 rounded-full bg-gray-800 hover:bg-gray-700 {sort === 'best'
+					? 'ring-2 ring-white'
+					: ''}"
+				on:click={() => handleFilterChange("best")}>Best Match</button
 			>
-				<div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-					<!-- Search Input -->
-					<div class="md:col-span-6">
-						<label class="block text-sm font-medium text-gray-300 mb-2">Search Query</label>
-						<div class="relative">
-							<Search
-								class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"
-							/>
-							<input
-								type="text"
-								bind:value={search}
-								placeholder="Enter {getTypeLabel(videoType).toLowerCase()} title..."
-								required
-								class="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-							/>
-						</div>
-					</div>
+			<button
+				class="px-4 py-2 rounded-full bg-gray-800 hover:bg-gray-700 {sort === 'newest'
+					? 'ring-2 ring-white'
+					: ''}"
+				on:click={() => handleFilterChange("newest")}>Newest First</button
+			>
+			<button
+				class="px-4 py-2 rounded-full bg-gray-800 hover:bg-gray-700 {sort === 'oldest'
+					? 'ring-2 ring-white'
+					: ''}"
+				on:click={() => handleFilterChange("oldest")}>Oldest First</button
+			>
+			<button
+				class="px-4 py-2 rounded-full bg-gray-800 hover:bg-gray-700 {sort === 'rating'
+					? 'ring-2 ring-white'
+					: ''}"
+				on:click={() => handleFilterChange("rating")}>Highest Rated</button
+			>
 
-					<!-- Video Type -->
-					<div class="md:col-span-2">
-						<label class="block text-sm font-medium text-gray-300 mb-2">Type</label>
-						<select
-							bind:value={videoType}
-							class="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-						>
-							<option value="tv">Series</option>
-							<option value="movie">Movie</option>
-							<option value="anime">Anime</option>
-						</select>
-					</div>
-
-					<!-- Year Filter -->
-					<div class="md:col-span-2">
-						<label class="block text-sm font-medium text-gray-300 mb-2">Year</label>
-						<input
-							type="number"
-							bind:value={year}
-							placeholder="2024"
-							min="1900"
-							max="2030"
-							class="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-						/>
-					</div>
-
-					<!-- Search Button -->
-					<div class="md:col-span-2">
-						<button
-							type="submit"
-							disabled={loading || !search.trim()}
-							class="w-full p-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 text-white rounded-xl font-medium transition-all transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-						>
-							{#if loading}
-								<div
-									class="w-5 h-5 border-2 border-white rounded-full animate-spin border-t-transparent"
-								></div>
-								Searching...
-							{:else}
-								<Search class="w-5 h-5" />
-								Search
-							{/if}
-						</button>
-					</div>
-				</div>
-
-				<!-- Advanced Filters Toggle -->
-				<div class="mt-4 flex justify-center">
-					<button
-						type="button"
-						onclick={() => (showFilters = !showFilters)}
-						class="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
-					>
-						<Filter class="w-4 h-4" />
-						{showFilters ? 'Hide' : 'Show'} Advanced Filters
-					</button>
-				</div>
-
-				<!-- Advanced Filters -->
-				{#if showFilters}
-					<div class="mt-4 pt-4 border-t border-gray-700">
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-							{#if videoType !== 'anime'}
-								<div>
-									<label class="block text-sm font-medium text-gray-300 mb-2">Sort By</label>
-									<select
-										bind:value={sortBy}
-										class="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-									>
-										<option value="popularity.desc">Popularity (High to Low)</option>
-										<option value="popularity.asc">Popularity (Low to High)</option>
-										<option value="release_date.desc">Release Date (Newest)</option>
-										<option value="release_date.asc">Release Date (Oldest)</option>
-										<option value="vote_average.desc">Rating (High to Low)</option>
-										<option value="vote_average.asc">Rating (Low to High)</option>
-									</select>
-								</div>
-							{/if}
-						</div>
-					</div>
-				{/if}
-			</form>
+			<span class="ml-6 text-gray-400">Show:</span>
+			<button
+				class="px-4 py-2 rounded-full bg-gray-800 hover:bg-gray-700 {filter === 'all'
+					? 'ring-2 ring-white'
+					: ''}"
+				on:click={() => handleFilterChange(undefined, "all")}>All</button
+			>
+			<button
+				class="px-4 py-2 rounded-full bg-gray-800 hover:bg-gray-700 {filter === 'movies'
+					? 'ring-2 ring-white'
+					: ''}"
+				on:click={() => handleFilterChange(undefined, "movies")}>Movies</button
+			>
+			<button
+				class="px-4 py-2 rounded-full bg-gray-800 hover:bg-gray-700 {filter === 'tv'
+					? 'ring-2 ring-white'
+					: ''}"
+				on:click={() => handleFilterChange(undefined, "tv")}>TV Shows</button
+			>
 		</div>
 
-		<!-- Previous Searches -->
-		{#if previousSearches.length > 0}
-			<div class="max-w-4xl mx-auto mb-8">
-				<div class="bg-gray-800/30 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50">
-					<div class="flex items-center justify-between mb-3">
-						<h2 class="text-lg font-medium text-white flex items-center gap-2">
-							<Clock class="w-5 h-5" />
-							Recent Searches
-						</h2>
-						<button
-							onclick={clearPreviousSearches}
-							class="text-gray-400 hover:text-red-400 transition-colors text-sm"
-						>
-							Clear All
-						</button>
-					</div>
-					<div class="flex flex-wrap gap-2">
-						{#each previousSearches as { query, type, timestamp }, index}
-							<div class="group relative">
-								<button
-									onclick={() => performPreviousSearch(query, type)}
-									class="px-3 py-2 bg-gray-700/50 hover:bg-gray-600/50 text-white rounded-lg transition-all flex items-center gap-2 text-sm border border-gray-600/50"
-								>
-									<span>{query}</span>
-									<span class="text-gray-400">({getTypeLabel(type)})</span>
-									<span class="text-xs text-gray-500">{formatTimeAgo(timestamp)}</span>
-								</button>
-								<button
-									onclick={() => removeSearch(index)}
-									class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
-								>
-									<X class="w-3 h-3 text-white" />
-								</button>
-							</div>
-						{/each}
-					</div>
-				</div>
-			</div>
-		{/if}
-
-		<!-- Error Message -->
 		{#if errorMessage}
-			<div class="max-w-4xl mx-auto mb-6">
-				<div class="bg-red-900/50 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl">
-					<div class="flex items-center gap-2">
-						<span class="text-red-400">⚠️</span>
-						{errorMessage}
-					</div>
-				</div>
-			</div>
+			<div class="bg-red-800/50 p-4 rounded-lg mb-6">{errorMessage}</div>
 		{/if}
 
-		<!-- Results -->
-		{#if movieResults.length > 0}
-			<div class="mb-8">
-				<h2 class="text-2xl font-bold text-white mb-4">
-					Search Results ({movieResults.length}
-					{movieResults.length === 1 ? 'result' : 'results'})
+		{#if results.length > 0}
+			<div id="results-section">
+				<h2 class="text-2xl font-semibold mb-4">
+					Results for "{search}" (Page {currentPage} of {totalPages})
 				</h2>
-				<div
-					class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8"
-				>
-					{#each movieResults.filter((movie) => movie.poster_path || movie.image || movie.coverImage) as movie}
-						<div class="flex justify-center">
-							{#if videoType === 'movie'}
-								<MovieCard {...movie} />
-							{:else if videoType === 'anime'}
-								<AnimeCard
-									id={movie.id}
-									name={movie.name}
-									vote={movie.vote_average}
-									poster={movie.image}
-									startDate={movie.first_air_date}
-								/>
-							{:else}
-								<SeriesCard {...movie} />
-							{/if}
+				<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+					{#each results as item}
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div
+							class="bg-gray-900 rounded-xl overflow-hidden hover:scale-105 transition transform duration-200"
+							on:click={() => {
+								if (item.media_type == "tv") {
+									goto(`/series/${item.id}`);
+								} else {
+									goto(`/movie/${item.id}`);
+								}
+							}}
+						>
+							<img
+								src={item.poster_path
+									? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+									: "/placeholder.png"}
+								alt={item.title || item.name}
+								class="w-full h-64 object-cover"
+							/>
+							<div class="p-3">
+								<h3 class="text-lg font-semibold truncate">{item.title || item.name}</h3>
+								<p class="text-sm text-gray-400">
+									{item.release_date || item.first_air_date || "Unknown date"} • {item.media_type.toUpperCase()}
+								</p>
+							</div>
 						</div>
 					{/each}
 				</div>
-			</div>
-		{:else if !loading && search && !errorMessage}
-			<div class="text-center py-12">
-				<div class="text-6xl mb-4">🔍</div>
-				<h3 class="text-xl font-medium text-gray-300 mb-2">No results found</h3>
-				<p class="text-gray-500">Try different keywords or check your spelling</p>
-			</div>
-		{/if}
 
-		<!-- Loading State -->
-		{#if loading}
-			<div class="text-center py-12">
-				<div class="inline-flex items-center gap-3 text-gray-400">
-					<div
-						class="w-8 h-8 border-2 border-gray-400 rounded-full animate-spin border-t-transparent"
-					></div>
-					<span class="text-lg">Searching {getTypeLabel(videoType).toLowerCase()}s...</span>
+				<div class="text-center text-gray-400 mt-4">
+					Showing {results.length} results on this page
 				</div>
 			</div>
+		{:else if !loading && hasSearched}
+			<p class="text-center text-gray-400">No results found for "{search}".</p>
 		{/if}
 
-		<!-- Pagination -->
 		{#if totalPages > 1 && !loading}
-			<div class="flex items-center justify-center mt-8">
-				<div class="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50">
-					<div class="flex items-center space-x-4">
-						<button
-							onclick={() => changePage(currentPage - 1)}
-							disabled={currentPage === 1}
-							class="p-2 text-white hover:bg-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-						>
-							<MoveLeft class="w-5 h-5" />
-						</button>
+			<div class="flex items-center justify-center mt-8 gap-3">
+				<button
+					on:click={() => changePage(1)}
+					disabled={currentPage === 1}
+					class="px-3 py-2 bg-gray-800 rounded disabled:opacity-50 hover:bg-gray-700 text-sm"
+				>
+					First
+				</button>
+				<button
+					on:click={() => changePage(currentPage - 1)}
+					disabled={currentPage === 1}
+					class="p-2 bg-gray-800 rounded disabled:opacity-50 hover:bg-gray-700"
+				>
+					<MoveLeft class="w-5 h-5" />
+				</button>
 
-						<div class="flex items-center space-x-2">
-							{#each Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-								const start = Math.max(1, currentPage - 2);
-								const end = Math.min(totalPages, start + 4);
-								return start + i;
-							}).filter((page) => page <= totalPages) as page}
-								<button
-									onclick={() => changePage(page)}
-									class="px-3 py-1 rounded-lg text-sm font-medium transition-all {currentPage ===
-									page
-										? 'bg-blue-600 text-white'
-										: 'text-gray-400 hover:text-white hover:bg-gray-700'}"
-								>
-									{page}
-								</button>
-							{/each}
-						</div>
+				{#each Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+					const startPage = Math.max(1, currentPage - 2);
+					const endPage = Math.min(totalPages, startPage + 4);
+					return startPage + i;
+				}).filter((page) => page <= totalPages) as pageNum}
+					<button
+						on:click={() => changePage(pageNum)}
+						class="px-3 py-2 rounded {currentPage === pageNum
+							? 'bg-red-500 text-white'
+							: 'bg-gray-800 hover:bg-gray-700'}"
+					>
+						{pageNum}
+					</button>
+				{/each}
 
-						<button
-							onclick={() => changePage(currentPage + 1)}
-							disabled={currentPage === totalPages}
-							class="p-2 text-white hover:bg-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-						>
-							<MoveRight class="w-5 h-5" />
-						</button>
-					</div>
-
-					<div class="text-center mt-2 text-sm text-gray-400">
-						Page {currentPage} of {totalPages}
-					</div>
-				</div>
+				<button
+					on:click={() => changePage(currentPage + 1)}
+					disabled={currentPage === totalPages}
+					class="p-2 bg-gray-800 rounded disabled:opacity-50 hover:bg-gray-700"
+				>
+					<MoveRight class="w-5 h-5" />
+				</button>
+				<button
+					on:click={() => changePage(totalPages)}
+					disabled={currentPage === totalPages}
+					class="px-3 py-2 bg-gray-800 rounded disabled:opacity-50 hover:bg-gray-700 text-sm"
+				>
+					Last
+				</button>
 			</div>
 		{/if}
 	</div>
 </div>
-
-<style>
-	/* Custom scrollbar */
-	:global(html) {
-		scrollbar-width: thin;
-		scrollbar-color: #4a5568 #1a202c;
-	}
-
-	:global(html::-webkit-scrollbar) {
-		width: 8px;
-	}
-
-	:global(html::-webkit-scrollbar-track) {
-		background: #1a202c;
-	}
-
-	:global(html::-webkit-scrollbar-thumb) {
-		background: #4a5568;
-		border-radius: 4px;
-	}
-
-	:global(html::-webkit-scrollbar-thumb:hover) {
-		background: #718096;
-	}
-</style>

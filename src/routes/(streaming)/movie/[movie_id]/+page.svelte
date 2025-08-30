@@ -1,19 +1,22 @@
 <script>
-    import { Heart } from 'lucide-svelte';
     import { page } from '$app/stores';
+    import { goto } from '$app/navigation';
     import { onMount } from 'svelte';
     import { toast } from 'svelte-sonner';
-    import { goto } from '$app/navigation';
+    import { Heart } from 'lucide-svelte';
+    import { PersistedState } from 'runed';
+    import { db } from '$lib/db/db.js'
 	import MovieCard from '$lib/components/card/MovieCard.svelte';
 
     let { data } = $props();
     let isAddedToHome = $state(false);
+
     let user = data?.user;
     let movie_data = data.movieData;
     let movie_id = $page.params.movie_id;
     let recommendation_data = data.recommendation_data;
-
-    // Ensure movie_id is a clean string
+    
+    const HOME_STORAGE_KEY = 'homepage_movies';
     const safeMovieId = String(movie_id).trim();
 
     let iframeSources = $state([
@@ -30,13 +33,11 @@
         `https://embed.rgshows.me/api/2/movie/?id=${safeMovieId}`
     ]);
 
-    let selectedSource = $state(0);
-
+    const selectedSource = new PersistedState(`selected_source_${movie_id}`,0)
+    
     function changeSource(index) {
-        selectedSource = index;
+        selectedSource.current = index;
     }
-
-    const HOME_STORAGE_KEY = 'homepage_movies';
 
     async function fetchMovieWatchlistStatus() {
         if (!user) return;
@@ -91,6 +92,7 @@
             }
 
             const storedMovies = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
+           
             if (action === 'add') {
                 const movieToAdd = {
                     id: movie_data.id,
@@ -119,11 +121,35 @@
     }
 
     onMount(() => {
-        if (user) {
-            fetchMovieWatchlistStatus();
+            setTimeout(async () => {
+                try {
+                    let movie = await db.movies_watch_history.where('tmdb_id').equals(movie_data.id).first();
+                    if (!movie){
+                    await db.movies_watch_history.add({
+                        tmdb_id: movie_data.id,
+                        poster_path: movie_data.poster_path,
+                        title: movie_data.title,
+                        vote_average: movie_data.vote_average,
+                        release_date: movie_data.release_date,
+                        genre_ids: movie_data.genre_ids,
+                        addedAt: new Date().toISOString() 
+                    });
+                    }
+                } catch (error) {
+                }
+            }, 5000); 
+        });
+
+     function handleMessage() {
+        if (data.type === 'PLAYER_EVENT') {
+        const { event, currentTime, duration } = data.data;
+        console.log(`Player event: ${event} at ${currentTime}s of ${duration}s`);
         }
-    });
+  }
+
 </script>
+
+<svelte:window on:message={handleMessage} />
 
 <div class="flex flex-col min-h-screen bg-black text-white overflow-x-hidden">
     <!-- Main Responsive Layout -->
@@ -228,7 +254,7 @@
             <!-- Video Player -->
             <div class="flex-1 relative bg-gray-900 border-2 border-gray-700 rounded-lg shadow-lg overflow-hidden min-h-[180px] sm:min-h-[280px] md:min-h-[400px]">
                 <iframe
-                    src={iframeSources[selectedSource]}
+                    src={iframeSources[selectedSource.current]}
                     class="absolute inset-0 w-full h-full"
                     allow="encrypted-media; fullscreen"
                     allowfullscreen
@@ -247,11 +273,11 @@
                             <button
                                 onclick={() => changeSource(index)}
                                 class={`px-2.5 py-1.5 text-xs font-medium rounded-lg min-w-[32px] text-center transition ${
-                                    index === selectedSource
+                                    index === selectedSource.current
                                         ? 'bg-white text-black shadow'
                                         : 'bg-gray-700 text-white hover:bg-gray-600'
                                 }`}
-                                aria-pressed={index === selectedSource}
+                                aria-pressed={index === selectedSource.current}
                             >
                                 {index + 1}
                             </button>

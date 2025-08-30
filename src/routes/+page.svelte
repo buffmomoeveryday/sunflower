@@ -1,11 +1,11 @@
 <script>
-	import { error } from '@sveltejs/kit';
-	import { fade } from 'svelte/transition';
-	import { onMount } from 'svelte';
+	import { error } from "@sveltejs/kit";
+	import { fade } from "svelte/transition";
+	import { onMount } from "svelte";
 
-	import MovieCard from '$lib/components/card/MovieCard.svelte';
-	import SeriesCard from '$lib/components/card/SeriesCard.svelte';
-	import Navbar from '$lib/components/Navbar.svelte';
+	import MovieCard from "$lib/components/card/MovieCard.svelte";
+	import SeriesCard from "$lib/components/card/SeriesCard.svelte";
+	import Navbar from "$lib/components/Navbar.svelte";
 
 	let { data } = $props();
 
@@ -13,6 +13,8 @@
 
 	let popularMovies = data.popularMoviesData;
 	let newReleases = data.newReleasesData;
+	let trendingMovies = data.trendingMoviesData;
+
 	let mySeriesWatchlist = $state([]);
 	let myMoiveWatchlist = $state([]);
 
@@ -21,9 +23,9 @@
 	async function loadMovieWatchlist(user_id) {
 		try {
 			const response = await fetch(`/api/movie/watchlist/list`, {
-				method: 'POST',
+				method: "POST",
 				headers: {
-					'Content-Type': 'application/json'
+					"Content-Type": "application/json"
 				},
 				body: JSON.stringify({ user_id: user.id })
 			});
@@ -41,23 +43,23 @@
 			myMoiveWatchlist = sortedMovies;
 
 			// Store the fetched data in local storage
-			localStorage.setItem('homepage_movies', JSON.stringify(sortedMovies));
+			localStorage.setItem("homepage_movies", JSON.stringify(sortedMovies));
 		} catch (error) {
-			console.error('Error loading movie watchlist:', error);
+			console.error("Error loading movie watchlist:", error);
 
 			// Fallback: Load from local storage if API fails
 			try {
-				const storedMovies = JSON.parse(localStorage.getItem('homepage_movies') || '[]');
+				const storedMovies = JSON.parse(localStorage.getItem("homepage_movies") || "[]");
 				myMoiveWatchlist = storedMovies.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
 			} catch (localError) {
-				console.error('Error loading movies from local storage:', localError);
+				console.error("Error loading movies from local storage:", localError);
 				myMoiveWatchlist = [];
 			}
 		}
 	}
 
 	function checkIfBrave() {
-		if (window.navigator.brave != undefined && window.navigator.brave.isBrave.name == 'isBrave') {
+		if (window.navigator.brave != undefined && window.navigator.brave.isBrave.name == "isBrave") {
 			isBrave = true;
 		} else {
 			isBrave = false;
@@ -74,6 +76,7 @@
 </script>
 
 <div class="min-h-screen p-4 text-white bg-black">
+	<!--  -->
 	{#if !isBrave}
 		<div class="container p-6 mx-auto mt-6 space-y-6">
 			<div class="flex items-start p-4 space-x-4 border rounded-lg bg-gray-50">
@@ -129,9 +132,65 @@
 		</div>
 	{/if}
 
+	{#snippet layout(movies_series, titleName)}
+		<section class="container p-4 mx-auto mt-8 rounded-lg">
+			{#if movies_series.results}
+				<section class="container p-4 mx-auto mt-6 rounded-lg">
+					<div class="flex items-center justify-between">
+						<h2 class="text-xl font-bold md:text-2xl">{titleName}</h2>
+						<span class="text-sm text-gray-400">{movies_series.results.length} items</span>
+					</div>
+					<div class="mt-4 overflow-x-auto scrollbar-hide">
+						<div
+							class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+						>
+							{#each movies_series.results as m}
+								{#if m.media_type == "tv"}
+									<SeriesCard
+										tmdb_id={m.id}
+										poster_path={m.poster_path}
+										name={m.name}
+										vote_average={m.vote_average}
+										first_air_date={m.first_air_date}
+										number_of_seasons={m.number_of_seasons}
+									/>
+								{:else}
+									<MovieCard {...m} />
+								{/if}
+							{/each}
+						</div>
+					</div>
+				</section>
+			{/if}
+		</section>
+	{/snippet}
+
+	<div class="min-h-screen p-4 text-white bg-black">
+		{@render layout(trendingMovies, "Trending")}
+		{@render layout(newReleases, "New Releases")}
+		{@render layout(popularMovies, "Popular Movies")}
+	</div>
 
 	<!-- Popular Movies Section -->
-	<section class="container p-4 mx-auto mt-6 rounded-lg">
+	<!-- <section class="container p-4 mx-auto mt-6 rounded-lg">
+		{#if trendingMovies}
+			<h2 class="text-xl font-bold md:text-2xl">Trending</h2>
+			<div
+				class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+			>
+				{#each trendingMovies.results as movie}
+					{#if movie.media_type == "tv"}
+						<SeriesCard {...movie} />
+					{:else}
+						<MovieCard {...movie} />
+					{/if}
+				{/each}
+			</div>
+		{/if}
+	</section> -->
+
+	<!-- Popular Movies Section -->
+	<!-- <section class="container p-4 mx-auto mt-6 rounded-lg">
 		{#if popularMovies}
 			<h2 class="text-xl font-bold md:text-2xl">Popular Movies</h2>
 			<div
@@ -142,10 +201,10 @@
 				{/each}
 			</div>
 		{/if}
-	</section>
+	</section> -->
 
 	<!-- New Releases Section -->
-	<section class="container p-4 mx-auto mt-8 rounded-lg">
+	<!-- <section class="container p-4 mx-auto mt-8 rounded-lg">
 		{#if newReleases}
 			<h2 class="text-xl font-bold md:text-2xl">New Releases</h2>
 			<div
@@ -156,7 +215,5 @@
 				{/each}
 			</div>
 		{/if}
-	</section>
-
-	<!-- Top Rated Movies Section -->
+	</section> -->
 </div>

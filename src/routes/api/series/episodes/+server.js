@@ -26,6 +26,7 @@ export async function POST(event) {
 			success: true,
 			episodes: seasonDetails.episodes
 		});
+		
 	} catch (error) {
 		return json({ success: false, error: 'Failed to fetch season episodes' });
 	}

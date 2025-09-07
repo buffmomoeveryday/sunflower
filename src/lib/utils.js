@@ -1,4 +1,4 @@
-import { API_KEY } from '$env/static/private';
+import { API_KEY as API} from '$env/static/private';
 
 const cache = new Map();
 
@@ -22,6 +22,6 @@ export async function fetchWithCache(url, cacheKey, ttl = 300000) {
 	}
 }
 
-export const API_KEY = API_KEY;
+export const API_KEY = API;
 export const POCKETBASE_URL = "https://sunflower-pocketbase.fly.dev";
 export const PUBLIC_REDIRECT_URI = '/';

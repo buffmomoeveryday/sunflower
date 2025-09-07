@@ -117,7 +117,7 @@
 
 	<!-- Filters -->
 	<div class="flex flex-wrap items-center gap-3 mb-6">
-		<span class="text-gray-400">Sort:</span>
+		<!-- <span class="text-gray-400">Sort:</span>
 		<button
 			class="px-4 py-2 rounded-full bg-gray-800 hover:bg-gray-700 {sort === 'best'
 				? 'ring-2 ring-white'
@@ -141,7 +141,7 @@
 				? 'ring-2 ring-white'
 				: ''}"
 			onclick={() => handleFilterChange("rating")}>Highest Rated</button
-		>
+		> -->
 
 		<span class="ml-6 text-gray-400">Show:</span>
 		<button
@@ -177,7 +177,14 @@
 				{#each results as item}
 					{#key item.id}
 						{#if item.media_type == "tv"}
-							<SeriesCard {...item} />
+							<SeriesCard
+								tmdb_id={item.id}
+								poster_path={item.poster_path}
+								name={item.name}
+								vote_average={item.vote_average}
+								first_air_date={item.first_air_date}
+								number_of_seasons={item.number_of_seasons}
+							/>
 						{:else}
 							<MovieCard {...item} />
 						{/if}

@@ -207,6 +207,7 @@
 					</h2>
 					<div class="flex items-center gap-2 text-sm text-gray-400">
 						<span>Episode {episode.current}</span>
+						{iframeSources[iframeKey.current]}
 						<!-- Add episode title if available from data -->
 						<!-- {#if episodes[selectedEpisode - 1]} -->
 						<!--   <span>&#8226;</span> -->

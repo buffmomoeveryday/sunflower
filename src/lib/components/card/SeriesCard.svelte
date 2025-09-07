@@ -2,6 +2,7 @@
 	import { db } from "../../dexie";
 	import { Bookmark, Play } from "lucide-svelte";
 	import { watch } from "runed";
+	import { toast } from "svelte-sonner";
 	import { onMount } from "svelte";
 	import { getSeriesTrailer } from "$lib/remote/trailer.remote";
 	import { removeBgImage, setBgImage } from "$lib/state/bgImage.svelte";
@@ -45,6 +46,7 @@
 					.equals(tmdb_id || id)
 					.delete();
 				isBookmarked = false;
+				toast.success("Removed from bookmark");
 			} else {
 				await db.series_bookmark.add({
 					tmdb_id: tmdb_id || id,
@@ -55,6 +57,7 @@
 					number_of_seasons
 				});
 				isBookmarked = true;
+				toast.success("Added to bookmark");
 			}
 		} catch (e) {
 			console.error("Bookmark error:", e);

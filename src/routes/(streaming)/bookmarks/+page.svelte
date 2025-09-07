@@ -1,7 +1,9 @@
 <script>
 	import MovieCard from "$lib/components/card/MovieCard.svelte";
 	import SeriesCard from "$lib/components/card/SeriesCard.svelte";
+	import AnimeCard from "$lib/components/card/AnimeCard.svelte";
 	import { PersistedState } from "runed";
+	import { toast } from "svelte-sonner";
 
 	import { db } from "$lib/dexie.js";
 	import { onMount } from "svelte";
@@ -15,7 +17,7 @@
 	onMount(async () => {
 		bookmarkedMovies = await db.movies_bookmark.toArray();
 		bookmarkedSeries = await db.series_bookmark.toArray();
-		// bookmarkedAnime = await db.anime_bookmark.toArray();
+		bookmarkedAnime = await db.animes_bookmark.toArray();
 	});
 	function setActiveTab(tab) {
 		activeTab.current = tab;
@@ -123,13 +125,7 @@
 								<div
 									class="bg-gray-800 rounded-lg shadow p-3 hover:shadow-lg transition duration-200 text-center"
 								>
-									<h3 class="font-medium text-white text-sm truncate">
-										{anime.title || "Untitled"}
-									</h3>
-									<p class="text-gray-400 text-xs">{anime.year || "Unknown Year"}</p>
-									<p class="text-gray-500 text-[11px] mt-1">
-										{new Date(anime.dateAdded || Date.now()).toLocaleDateString()}
-									</p>
+									<AnimeCard {...anime} />
 								</div>
 							{/each}
 						</div>

@@ -2,6 +2,7 @@
 	import { goto } from "$app/navigation";
 	import { db } from "../../dexie";
 	import { watch } from "runed";
+	import { toast } from "svelte-sonner";
 	import { onMount } from "svelte";
 	import { Bookmark } from "lucide-svelte";
 	import { getMovieTrailer } from "../../remote/trailer.remote.js";
@@ -27,6 +28,7 @@
 			if (marked) {
 				await db.movies_bookmark.delete(marked.id);
 				isBookmarked = false;
+				toast.success("Removed from bookmark");
 			} else {
 				await db.movies_bookmark.add({
 					tmdb_id: id,
@@ -37,6 +39,7 @@
 					genre_ids: genre_ids
 				});
 				isBookmarked = true;
+				toast.success("Added to bookmark");
 			}
 		} catch (error) {
 			console.error("Error toggling bookmark:", error);

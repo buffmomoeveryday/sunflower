@@ -1,8 +1,13 @@
 <script>
 	import { removeBgImage, setBgImage } from "$lib/state/bgImage.svelte";
+	import { Bookmark } from "lucide-svelte";
+	import { toast } from "svelte-sonner";
+	import { db } from "../../dexie";
+	import { onMount } from "svelte";
 
 	let { id, tmdb_id, poster, name, vote, startDate, title, episodes } = $props();
 
+	let isBookmarked = $state(false);
 	const formatRating = (rating) => {
 		rating = rating / 10;
 		if (!rating || rating === 0) return "N/A";
@@ -20,10 +25,60 @@
 	let rating = formatRating(vote);
 	let ratingColor = getRatingColor(vote);
 	let year = startDate || "N/A"; // extract year only
+
+	async function toggleBookmark() {
+		console.log("helo");
+		try {
+			let marked = await db.animes_bookmark.where("tmdb_id").equals(id).first();
+			if (marked) {
+				await db.animes_bookmark.where("tmdb_id").equals(id).delete();
+				isBookmarked = false;
+				toast.success("Removed from bookmark");
+			} else {
+				await db.animes_bookmark.add({
+					tmdb_id: id,
+					poster,
+					name,
+					title,
+					vote,
+					start_date: startDate,
+					episodes
+				});
+				isBookmarked = true;
+				toast.success("Added to bookmark");
+			}
+		} catch (e) {
+			console.error("Bookmark error:", e);
+		}
+	}
+
+	onMount(async () => {
+		try {
+			let book = await db.animes_bookmark.where("tmdb_id").equals(id).first();
+			if (book) isBookmarked = true;
+		} catch (e) {
+			console.error("Bookmark check error:", e);
+		}
+	});
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="group relative w-full max-w-sm mx-auto">
+	<button
+		onclick={() => {
+			console.log("Helo");
+			toggleBookmark();
+		}}
+		class="absolute top-3 left-3 z-10 bg-black/70 hover:bg-black/90 text-white p-2 rounded-full transition"
+		aria-label="Toggle Bookmark"
+	>
+		{#if isBookmarked}
+			<Bookmark color="gold" strokeWidth={3} fill="gold" />
+		{:else}
+			<Bookmark />
+		{/if}
+	</button>
+
 	<div
 		class="relative overflow-hidden bg-gray-900/80 backdrop-blur-sm rounded-2xl shadow-lg transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-2 border border-gray-800/50"
 	>

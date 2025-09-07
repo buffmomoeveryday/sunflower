@@ -63,7 +63,7 @@
 					>
 						{#each series.results as s}
 							<SeriesCard
-								id={s.id}
+								tmdb_id={s.id}
 								title={s.title}
 								name={s.name}
 								poster_path={s.poster_path}

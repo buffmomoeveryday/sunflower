@@ -16,7 +16,8 @@
 		Info,
 		Menu,
 		X,
-		SearchSlashIcon
+		SearchSlashIcon,
+		Bookmark
 	} from "lucide-svelte";
 
 	let { data } = $props();
@@ -28,7 +29,7 @@
 	const selectedEpisode = new PersistedState(`selected_episodes_${seriesDetailData.id}`, 1);
 
 	let episodes = $state([]);
-	let isAddedToHome = $state(false);
+	let isBookmarked = $state(false);
 	let isSidebarVisible = $state(false);
 	let isPlayerLoading = $state(true);
 
@@ -67,7 +68,7 @@
 	});
 
 	async function updateProgressInDatabase() {
-		if (!isAddedToHome) return;
+		if (!isBookmarked) return;
 		if (!user) return;
 		try {
 			const response = await fetch("/api/series/watchlist/save", {
@@ -104,7 +105,7 @@
 
 	async function selectEpisode(episodeId) {
 		selectedEpisode.current = episodeId;
-		isPlayerLoading = true; // Set loading state when changing episodes
+		isPlayerLoading = true;
 		await updateProgressInDatabase();
 	}
 
@@ -139,31 +140,7 @@
 		isPlayerLoading = false;
 	}
 
-	async function getProgress() {
-		// if (user) {
-		// 	try {
-		// 		let response = await fetch("/api/series/watchlist/get", {
-		// 			method: "POST",
-		// 			headers: { "Content-Type": "application/json" },
-		// 			body: JSON.stringify({
-		// 				user_id: data.user.id,
-		// 				tmdb_id: seriesDetailData.id
-		// 			})
-		// 		});
-		// 		if (response.ok) {
-		// 			isAddedToHome = true;
-		// 			let result = await response.json();
-		// 			if (result.records) {
-		// 				selectedSeason.current = result.records.season_id;
-		// 				selectedEpisode.current = result.records.episode_id;
-		// 				isAddedToHome = !isAddedToHome;
-		// 			}
-		// 		}
-		// 	} catch (error) {
-		// 		console.error("Error fetching watchlist data:", error);
-		// 	}
-		// }
-	}
+	async function getProgress() {}
 
 	function previousEpisode() {
 		if (selectedEpisode.current > 1) {
@@ -176,7 +153,6 @@
 		}
 	}
 
-	// Update the nextEpisode function to check air dates
 	function nextEpisode() {
 		if (selectedEpisode.current < episodes.length) {
 			const nextEpisodeData = episodes[selectedEpisode.current]; // selectedEpisode is 1-based
@@ -197,6 +173,29 @@
 		isSidebarVisible = !isSidebarVisible;
 	}
 
+	async function toggleBookmark() {
+		try {
+			let marked = await db.series_bookmark.where("tmdb_id").equals(seriesDetailData.id).first();
+			if (marked) {
+				await db.series_bookmark.where("tmdb_id").equals(seriesDetailData.id).delete();
+				isBookmarked = false;
+				toast.success("Removed from bookmark");
+			} else {
+				await db.series_bookmark.add({
+					tmdb_id: seriesDetailData.id,
+					poster_path: seriesDetailData.poster_path,
+					name: seriesDetailData.name,
+					vote_average: seriesDetailData.vote_average,
+					first_air_date: seriesDetailData.first_air_date,
+					number_of_seasons: seriesDetailData.first_air_date
+				});
+				isBookmarked = true;
+				toast.success("Added to bookmark");
+			}
+		} catch (e) {
+			console.error("Bookmark error:", e);
+		}
+	}
 	onMount(async () => {
 		await fetchEpisodes(selectedSeason.current);
 		await getProgress();
@@ -216,10 +215,6 @@
 				});
 			}
 		}, 5000);
-	});
-
-	$effect(() => {
-		console.log(iframeSources, selectedEpisode.current);
 	});
 </script>
 
@@ -248,15 +243,15 @@
 		<h1 class="text-lg font-bold truncate">
 			{seriesDetailData.name}
 		</h1>
-		{#if user}
-			<button class="p-2 transition-colors duration-200 hover:bg-gray-800 rounded-lg">
-				<Heart
-					size={20}
-					color={isAddedToHome ? "#fb2c36" : "white"}
-					fill={isAddedToHome ? "#fb2c36" : "none"}
-				/>
-			</button>
-		{/if}
+
+		<button class="p-2 transition-colors duration-200 hover:bg-gray-800 rounded-lg">
+			<Bookmark
+				onclick={toggleBookmark}
+				size={20}
+				color={isBookmarked ? "#fb2c36" : "white"}
+				fill={isBookmarked ? "#fb2c36" : "none"}
+			/>
+		</button>
 	</div>
 	<div class="flex flex-1 overflow-hidden">
 		<!-- Sidebar -->
@@ -280,18 +275,18 @@
 				</div>
 				<div class="flex-1 p-4 overflow-y-auto">
 					<!-- Desktop Watchlist Button -->
-					{#if user}
-						<button
-							class="hidden md:flex items-center gap-2 w-full p-3 mb-6 transition-colors duration-200 bg-black border border-gray-700 rounded-lg hover:bg-gray-800"
-						>
-							<Heart
-								size={20}
-								color={isAddedToHome ? "#fb2c36" : "white"}
-								fill={isAddedToHome ? "#fb2c36" : "none"}
-							/>
-							<span class="text-sm">{isAddedToHome ? "Added to Home" : "Add to Home"}</span>
-						</button>
-					{/if}
+					<button
+						onclick={toggleBookmark}
+						class="hidden md:flex items-center gap-2 w-full p-3 mb-6 transition-colors duration-200 bg-black border border-gray-700 rounded-lg hover:bg-gray-800"
+					>
+						{#if isBookmarked}
+							<Bookmark color="gold" strokeWidth={3} fill="gold" />
+						{:else}
+							<Bookmark />
+						{/if}
+
+						<span class="text-sm">{isBookmarked ? "Added to Bookmark" : "Bookmark"}</span>
+					</button>
 					<!-- Season Selection -->
 					<div class="mb-6">
 						<h3

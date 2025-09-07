@@ -106,7 +106,6 @@ async function fetchAnimeData(anime_id) {
 		});
 
 		const data = await res.json();
-
 		if (data.data && data.data.Media) {
 			return data.data.Media;
 		} else {
@@ -120,5 +119,5 @@ async function fetchAnimeData(anime_id) {
 export async function load({ params }) {
 	let anime_id = params.anime_id;
 	let anime_data = await fetchAnimeData(anime_id);
-	return { anime_data };
+	return { anime_data,anime_id };
 }

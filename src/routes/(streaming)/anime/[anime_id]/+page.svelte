@@ -17,8 +17,9 @@
 	import { toast } from "svelte-sonner";
 
 	let { data } = $props();
+
 	let anime_data = data.anime_data;
-	let anime_id = $page.params.anime_id;
+	let anime_id = data.anime_id;
 
 	const dub = new PersistedState(`dub_${anime_id}`, 0);
 	const episode = new PersistedState(`episode_${anime_id}`, 1);
@@ -207,7 +208,6 @@
 					</h2>
 					<div class="flex items-center gap-2 text-sm text-gray-400">
 						<span>Episode {episode.current}</span>
-						{iframeSources[iframeKey.current]}
 						<!-- Add episode title if available from data -->
 						<!-- {#if episodes[selectedEpisode - 1]} -->
 						<!--   <span>&#8226;</span> -->

@@ -19,6 +19,7 @@
 		bookmarkedSeries = await db.series_bookmark.toArray();
 		bookmarkedAnime = await db.animes_bookmark.toArray();
 	});
+
 	function setActiveTab(tab) {
 		activeTab.current = tab;
 	}

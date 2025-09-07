@@ -1,20 +1,20 @@
 <script>
 	import { page } from "$app/stores";
+	import { db } from "$lib/dexie";
 	import { goto } from "$app/navigation";
 	import { onMount } from "svelte";
 	import { toast } from "svelte-sonner";
-	import { Heart } from "lucide-svelte";
+	import { Heart, Bookmark } from "lucide-svelte";
 	import { PersistedState } from "runed";
 	import { Menu, X, Info } from "lucide-svelte";
-	import { db } from "$lib/dexie.js";
 	import MovieCard from "$lib/components/card/MovieCard.svelte";
 
 	let { data } = $props();
-	let isAddedToHome = $state(false);
+	let isBookmarked = $state(false);
 
 	let user = data?.user;
 	let movie_data = data.movieData;
-	let movie_id = $page.params.movie_id;
+	let movie_id = data.movieData.id;
 	let recommendation_data = data.recommendation_data;
 
 	const HOME_STORAGE_KEY = "homepage_movies";
@@ -56,16 +56,16 @@
 			});
 			if (!response.ok) {
 				if (response.status === 404) {
-					isAddedToHome = false;
+					isBookmarked = false;
 					return;
 				}
 				throw new Error(`Failed to fetch watchlist status: ${response.statusText}`);
 			}
 			const data = await response.json();
-			isAddedToHome = !!data?.id;
+			isBookmarked = !!data?.id;
 		} catch (error) {
 			console.error("Error fetching watchlist status:", error);
-			isAddedToHome = false;
+			isBookmarked = false;
 		}
 	}
 
@@ -80,7 +80,7 @@
 				average_ratings: movie_data.vote_average
 			};
 
-			const action = isAddedToHome ? "remove" : "add";
+			const action = isBookmarked ? "remove" : "add";
 			const method = action === "add" ? "POST" : "DELETE";
 
 			const response = await fetch("/api/movie/watchlist/save", {
@@ -110,14 +110,14 @@
 				if (!storedMovies.some((m) => m.id === movie_data.id)) {
 					storedMovies.push(movieToAdd);
 					localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedMovies));
-					toast.success("Added to Home");
-					isAddedToHome = true;
+					toast.success("Added to Bookmark");
+					isBookmarked = true;
 				}
 			} else {
 				const updatedMovies = storedMovies.filter((m) => m.id !== movie_data.id);
 				localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(updatedMovies));
 				toast.success("Removed from Home");
-				isAddedToHome = false;
+				isBookmarked = false;
 			}
 		} catch (error) {
 			console.error(error);
@@ -125,7 +125,35 @@
 		}
 	}
 
-	onMount(() => {
+	async function toggleBookmark() {
+		try {
+			let marked = await db.movies_bookmark.where("tmdb_id").equals(id).first();
+
+			if (marked) {
+				await db.movies_bookmark.delete(marked.id);
+				isBookmarked = false;
+				toast.success("Removed from bookmark");
+			} else {
+				await db.movies_bookmark.add({
+					tmdb_id: id,
+					poster_path: poster_path,
+					title: title,
+					vote_average: vote_average,
+					release_date: release_date,
+					genre_ids: genre_ids
+				});
+				isBookmarked = true;
+				toast.success("Added to bookmark");
+			}
+		} catch (error) {
+			console.error("Error toggling bookmark:", error);
+		}
+	}
+	onMount(async () => {
+		let book = await db.movies_bookmark.where("tmdb_id").equals(movie_data.id).first();
+		if (book) {
+			isBookmarked = true;
+		}
 		setTimeout(async () => {
 			try {
 				let movie = await db.movies_watch_history.where("tmdb_id").equals(movie_data.id).first();
@@ -197,20 +225,18 @@
 
 					<!-- Info -->
 					<div class="flex-1 min-w-0">
-						{#if user}
-							<button
-								onclick={toggleHomeStatus}
-								class="w-full flex items-center justify-center gap-2 px-2 py-2 mb-3 text-xs font-medium rounded-lg bg-black border border-gray-700 hover:bg-gray-900 transition"
-								aria-label={isAddedToHome ? "Remove from Home" : "Add to Home"}
-							>
-								<Heart
-									size={16}
-									color={isAddedToHome ? "#fb2c36" : "white"}
-									fill={isAddedToHome ? "#fb2c36" : "none"}
-								/>
-								<span>{isAddedToHome ? "Added" : "Add"}</span>
-							</button>
-						{/if}
+						<button
+							onclick={() => toggleBookmark()}
+							class="w-full flex items-center justify-center gap-2 px-2 py-2 mb-3 text-xs font-medium rounded-lg bg-black border border-gray-700 hover:bg-gray-900 transition"
+							aria-label={isBookmarked ? "Remove from Home" : "Add to Bookmark"}
+						>
+							<Bookmark
+								size={16}
+								color={isBookmarked ? "#fb2c36" : "white"}
+								fill={isBookmarked ? "#fb2c36" : "none"}
+							/>
+							<span>{isBookmarked ? "Added" : "Add"}</span>
+						</button>
 
 						<!-- Genres -->
 						<div class="bg-gray-900 rounded-lg p-2">
@@ -246,20 +272,18 @@
 					loading="lazy"
 				/>
 
-				{#if user}
-					<button
-						onclick={toggleHomeStatus}
-						class="w-full flex items-center justify-center gap-2 px-4 py-3 mb-4 text-sm font-medium rounded-lg bg-black border border-gray-700 hover:bg-gray-900 transition"
-						aria-label={isAddedToHome ? "Remove from Home" : "Add to Home"}
-					>
-						<Heart
-							size={20}
-							color={isAddedToHome ? "#fb2c36" : "white"}
-							fill={isAddedToHome ? "#fb2c36" : "none"}
-						/>
-						<span>{isAddedToHome ? "Added to Home" : "Add to Home"}</span>
-					</button>
-				{/if}
+				<button
+					onclick={toggleHomeStatus}
+					class="w-full flex items-center justify-center gap-2 px-4 py-3 mb-4 text-sm font-medium rounded-lg bg-black border border-gray-700 hover:bg-gray-900 transition"
+					aria-label={isBookmarked ? "Remove from bookmark" : "Add to bookmark"}
+				>
+					<Bookmark
+						size={20}
+						color={isBookmarked ? "#fb2c36" : "white"}
+						fill={isBookmarked ? "#fb2c36" : "none"}
+					/>
+					<span>{isBookmarked ? "Added to Bookmark" : "Add to Bookmark"}</span>
+				</button>
 
 				<div class="bg-gray-900 rounded-lg p-4">
 					<h3 class="text-lg font-semibold mb-3">Overview</h3>

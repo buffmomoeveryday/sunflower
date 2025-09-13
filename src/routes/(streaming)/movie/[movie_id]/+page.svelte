@@ -1,6 +1,6 @@
 <script>
 	import { page } from "$app/stores";
-	import { db } from "$lib/dexie";
+	import { db } from "$lib/db/dexie";
 	import { goto } from "$app/navigation";
 	import { onMount } from "svelte";
 	import { toast } from "svelte-sonner";
@@ -46,28 +46,28 @@
 		selectedSource.current = index;
 	}
 
-	async function fetchMovieWatchlistStatus() {
-		if (!user) return;
-		try {
-			const response = await fetch(`/api/movie/watchlist/get`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ user_id: user.id, tmdb_id: safeMovieId })
-			});
-			if (!response.ok) {
-				if (response.status === 404) {
-					isBookmarked = false;
-					return;
-				}
-				throw new Error(`Failed to fetch watchlist status: ${response.statusText}`);
-			}
-			const data = await response.json();
-			isBookmarked = !!data?.id;
-		} catch (error) {
-			console.error("Error fetching watchlist status:", error);
-			isBookmarked = false;
-		}
-	}
+	// async function fetchMovieWatchlistStatus() {
+	// 	if (!user) return;
+	// 	try {
+	// 		const response = await fetch(`/api/movie/watchlist/get`, {
+	// 			method: "POST",
+	// 			headers: { "Content-Type": "application/json" },
+	// 			body: JSON.stringify({ user_id: user.id, tmdb_id: safeMovieId })
+	// 		});
+	// 		if (!response.ok) {
+	// 			if (response.status === 404) {
+	// 				isBookmarked = false;
+	// 				return;
+	// 			}
+	// 			throw new Error(`Failed to fetch watchlist status: ${response.statusText}`);
+	// 		}
+	// 		const data = await response.json();
+	// 		isBookmarked = !!data?.id;
+	// 	} catch (error) {
+	// 		console.error("Error fetching watchlist status:", error);
+	// 		isBookmarked = false;
+	// 	}
+	// }
 
 	async function toggleHomeStatus() {
 		if (!user) return;
@@ -127,7 +127,7 @@
 
 	async function toggleBookmark() {
 		try {
-			let marked = await db.movies_bookmark.where("tmdb_id").equals(id).first();
+			let marked = await db.movies_bookmark.where("tmdb_id").equals(movie_data.id).first();
 
 			if (marked) {
 				await db.movies_bookmark.delete(marked.id);
@@ -135,12 +135,13 @@
 				toast.success("Removed from bookmark");
 			} else {
 				await db.movies_bookmark.add({
-					tmdb_id: id,
-					poster_path: poster_path,
-					title: title,
-					vote_average: vote_average,
-					release_date: release_date,
-					genre_ids: genre_ids
+					tmdb_id: movie_data.id,
+					poster_path: movie_data.poster_path,
+					title: movie_data.title,
+					vote_average: movie_data.vote_average,
+					release_date: movie_data.release_date,
+					genre_ids: movie_data.genre_ids,
+					addedAt: new Date().toISOString()
 				});
 				isBookmarked = true;
 				toast.success("Added to bookmark");
@@ -232,8 +233,8 @@
 						>
 							<Bookmark
 								size={16}
-								color={isBookmarked ? "#fb2c36" : "white"}
-								fill={isBookmarked ? "#fb2c36" : "none"}
+								color={isBookmarked ? "gold" : "white"}
+								fill={isBookmarked ? "gold" : "none"}
 							/>
 							<span>{isBookmarked ? "Added" : "Add"}</span>
 						</button>
@@ -273,14 +274,14 @@
 				/>
 
 				<button
-					onclick={toggleHomeStatus}
+					onclick={toggleBookmark}
 					class="w-full flex items-center justify-center gap-2 px-4 py-3 mb-4 text-sm font-medium rounded-lg bg-black border border-gray-700 hover:bg-gray-900 transition"
 					aria-label={isBookmarked ? "Remove from bookmark" : "Add to bookmark"}
 				>
 					<Bookmark
 						size={20}
-						color={isBookmarked ? "#fb2c36" : "white"}
-						fill={isBookmarked ? "#fb2c36" : "none"}
+						color={isBookmarked ? "gold" : "white"}
+						fill={isBookmarked ? "gold" : "none"}
 					/>
 					<span>{isBookmarked ? "Added to Bookmark" : "Add to Bookmark"}</span>
 				</button>

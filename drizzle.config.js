@@ -4,7 +4,7 @@ import { defineConfig } from 'drizzle-kit';
 config({ path: '.env' });
 
 export default defineConfig({
-	schema: './src/db/schema.js',
+	schema: './src/lib/db/schema.js',
 	out: './migrations',
 	dialect: 'turso',
 	dbCredentials: {

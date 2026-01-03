@@ -46,29 +46,6 @@
 		selectedSource.current = index;
 	}
 
-	// async function fetchMovieWatchlistStatus() {
-	// 	if (!user) return;
-	// 	try {
-	// 		const response = await fetch(`/api/movie/watchlist/get`, {
-	// 			method: "POST",
-	// 			headers: { "Content-Type": "application/json" },
-	// 			body: JSON.stringify({ user_id: user.id, tmdb_id: safeMovieId })
-	// 		});
-	// 		if (!response.ok) {
-	// 			if (response.status === 404) {
-	// 				isBookmarked = false;
-	// 				return;
-	// 			}
-	// 			throw new Error(`Failed to fetch watchlist status: ${response.statusText}`);
-	// 		}
-	// 		const data = await response.json();
-	// 		isBookmarked = !!data?.id;
-	// 	} catch (error) {
-	// 		console.error("Error fetching watchlist status:", error);
-	// 		isBookmarked = false;
-	// 	}
-	// }
-
 	async function toggleHomeStatus() {
 		if (!user) return;
 		try {

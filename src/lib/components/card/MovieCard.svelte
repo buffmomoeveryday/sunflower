@@ -1,6 +1,6 @@
 <script>
 	import { goto } from "$app/navigation";
-	import { db } from "../../dexie";
+	import { db } from "$lib/db/dexie";
 	import { watch } from "runed";
 	import { toast } from "svelte-sonner";
 	import { onMount } from "svelte";
@@ -11,6 +11,7 @@
 
 	let { id, tmdb_id, poster_path, title, vote_average, release_date, genre_ids = [] } = $props();
 
+	let isBookmarked = $state(false);
 	let showTrailer = $state(false);
 	let trailer_key = $derived.by(async () => {
 		if (showTrailer) {
@@ -19,7 +20,6 @@
 		}
 		return "";
 	});
-	let isBookmarked = $state(false);
 
 	async function toggleBookmark() {
 		try {

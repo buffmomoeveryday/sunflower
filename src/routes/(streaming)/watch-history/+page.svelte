@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from "svelte";
-	import { db } from "$lib/dexie";
+	import { db } from "../../../lib/db/dexie";
 	import MovieCard from "$lib/components/card/MovieCard.svelte";
 
 	let activeTab = "movies"; // 'movies' | 'series' | 'anime'

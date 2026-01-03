@@ -19,56 +19,6 @@
 	let myMoiveWatchlist = $state([]);
 
 	let isBrave = $state(true);
-
-	async function loadMovieWatchlist(user_id) {
-		try {
-			const response = await fetch(`/api/movie/watchlist/list`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json"
-				},
-				body: JSON.stringify({ user_id: user.id })
-			});
-
-			if (!response.ok) {
-				throw new Error(`Failed to load movie watchlist: ${response.statusText}`);
-			}
-
-			const data = await response.json();
-
-			const sortedMovies = data.records.items.sort(
-				(a, b) => new Date(b.created) - new Date(a.created)
-			);
-			myMoiveWatchlist = sortedMovies;
-
-			localStorage.setItem("homepage_movies", JSON.stringify(sortedMovies));
-		} catch (error) {
-			console.error("Error loading movie watchlist:", error);
-
-			try {
-				const storedMovies = JSON.parse(localStorage.getItem("homepage_movies") || "[]");
-				myMoiveWatchlist = storedMovies.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
-			} catch (localError) {
-				console.error("Error loading movies from local storage:", localError);
-				myMoiveWatchlist = [];
-			}
-		}
-	}
-
-	function checkIfBrave() {
-		if (window.navigator.brave != undefined && window.navigator.brave.isBrave.name == "isBrave") {
-			isBrave = true;
-		} else {
-			isBrave = false;
-		}
-	}
-
-	onMount(() => {
-		checkIfBrave();
-		if (user) {
-			loadMovieWatchlist();
-		}
-	});
 </script>
 
 {#snippet layout(movies_series, titleName)}

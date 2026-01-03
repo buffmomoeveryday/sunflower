@@ -1,11 +1,27 @@
 <script>
 	import { page } from "$app/stores";
+	import { authClient } from "$lib/auth/auth-client.js";
+
 	let { data, form } = $props();
 
 	let email = $state("");
+	let name = $state("");
 	let password = $state("");
 	let password2 = $state("");
 	let buttonDisabled = $state(true);
+	let errorMessage = $state("");
+
+	async function registerUser() {
+		const { data, error } = await authClient.signUp.email({
+			name: name,
+			email: email,
+			password: password,
+			callbackURL: "/login"
+		});
+		if (error) {
+			errorMessage = error;
+		}
+	}
 
 	$effect(() => {
 		if (password !== password2 || !password || !password2 || password.length < 8) {
@@ -30,8 +46,20 @@
 			</div>
 		{/if}
 
-		<form method="POST">
+		<div>
 			<h1 class="pb-5 text-xl font-bold">Register</h1>
+
+			<label class="block mb-4">
+				<span class="block text-sm font-medium text-gray-300">Name</span>
+				<input
+					class="w-full px-3 py-2 mt-1 text-gray-100 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+					name="email"
+					type="text"
+					placeholder="John Doe"
+					bind:value={name}
+					required
+				/>
+			</label>
 
 			<label class="block mb-4">
 				<span class="block text-sm font-medium text-gray-300">E-Mail</span>
@@ -73,12 +101,15 @@
 			</label>
 
 			<button
+				onclick={() => {
+					registerUser();
+				}}
 				class="w-full px-4 py-2 font-semibold text-black bg-white rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-75 disabled:bg-gray-500 disabled:text-gray-300 disabled:cursor-not-allowed"
 				type="submit"
 				disabled={buttonDisabled}
 			>
 				Register
 			</button>
-		</form>
+		</div>
 	</div>
 </div>

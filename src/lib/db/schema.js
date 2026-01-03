@@ -1,5 +1,10 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { title } from 'valibot';
 
+
+// .......................
+// User
+// .......................
 export const user = sqliteTable('user', {
 	id: text('id').primaryKey(),
 	name: text('name').notNull(),
@@ -59,3 +64,40 @@ export const verification = sqliteTable('verification', {
 	createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 	updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
 });
+
+
+// .......................
+// Bookmarks
+// .......................
+export const moviesBookmark = sqliteTable("movies_bookmark", {
+  id: text("id").primaryKey(),
+  tmdbId: text("tmdb_id").notNull(),
+  posterPath: text("poster_path").notNull(),
+  title: text("title").notNull(),
+  voteAverage: text("vote_average").notNull(),
+  releaseDate: text("release_date").notNull(),
+  genreIds: text("genre_ids").notNull(),
+});
+
+export const seriesBookmark = sqliteTable("series_bookmark", {
+	id: text("id").primaryKey(),
+	tmdbId: text("tmdn_id").notNull(),
+	posterPath: text("poster_path").notNull(),
+	name: text("name").notNull(),
+	voteAverage: text("vote_average").notNull(),
+	firstAirDate: text("first_air_date").notNull(),
+	numberOfSeason: integer("number_of_seasons").notNull(),
+	
+})
+
+
+export const animesBookmark = sqliteTable("series_bookmark", {
+	id: text("id").primaryKey(),
+	tmdbId: text("tmdn_id").notNull(),
+	posterPath: text("poster_path").notNull(),
+	name: text("name").notNull(),
+	voteAverage: text("vote_average").notNull(),
+	firstAirDate: text("first_air_date").notNull(),
+	numberOfSeason: integer("number_of_seasons").notNull(),
+	
+})

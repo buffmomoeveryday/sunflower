@@ -1,5 +1,5 @@
 <script>
-	import { db } from "$lib/dexie.js";
+	import { db } from "$lib/db/dexie";
 	import { onMount } from "svelte";
 	import { toast } from "svelte-sonner";
 	import { PersistedState } from "runed";

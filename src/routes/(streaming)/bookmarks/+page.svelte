@@ -2,10 +2,10 @@
 	import MovieCard from "$lib/components/card/MovieCard.svelte";
 	import SeriesCard from "$lib/components/card/SeriesCard.svelte";
 	import AnimeCard from "$lib/components/card/AnimeCard.svelte";
+	import { db } from "$lib/db/dexie";
+
 	import { PersistedState } from "runed";
 	import { toast } from "svelte-sonner";
-
-	import { db } from "$lib/dexie.js";
 	import { onMount } from "svelte";
 
 	const activeTab = new PersistedState("bookmarks", "movie");
@@ -100,7 +100,15 @@
 					{#if bookmarkedSeries.length > 0}
 						<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
 							{#each bookmarkedSeries as series}
-								<SeriesCard {...series} class="h-full" />
+								<SeriesCard
+									tmdb_id={series.id}
+									poster_path={series.poster_path}
+									name={series.name}
+									vote_average={series.vote_average}
+									first_air_date={series.first_air_date}
+									number_of_seasons={series.number_of_seasons}
+									class="h-full"
+								/>
 							{/each}
 						</div>
 					{:else}

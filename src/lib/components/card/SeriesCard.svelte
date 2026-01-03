@@ -1,11 +1,12 @@
 <script>
-	import { db } from "../../dexie";
+	import { db } from "$lib/db/dexie";
 	import { Bookmark, Play } from "lucide-svelte";
 	import { watch } from "runed";
 	import { toast } from "svelte-sonner";
 	import { onMount } from "svelte";
 	import { getSeriesTrailer } from "$lib/remote/trailer.remote";
 	import { removeBgImage, setBgImage } from "$lib/state/bgImage.svelte";
+	import { getCurrentUser } from "$lib/state/user.svelte";
 
 	let { tmdb_id, id, poster_path, name, vote_average, first_air_date, number_of_seasons } =
 		$props();
@@ -76,7 +77,9 @@
 		}
 	);
 
+	let user = $state();
 	onMount(async () => {
+		user = getCurrentUser();
 		try {
 			let book = await db.series_bookmark
 				.where("tmdb_id")

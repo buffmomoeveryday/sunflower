@@ -2,7 +2,7 @@ import { betterAuth } from 'better-auth';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { db } from '../db/db.js';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import * as schema from '../db/schema';
+import * as schema from '../db/schema.js';
 
 export const auth = betterAuth({
 	emailAndPassword: {

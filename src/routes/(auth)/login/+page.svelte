@@ -2,7 +2,8 @@
 	import { page } from "$app/stores";
 	import { BaseAuthStore } from "pocketbase";
 	import { onMount } from "svelte";
-	let { data, form } = $props();
+	import { authClient } from "$lib/auth/auth-client.js";
+	let { form } = $props();
 
 	function validateEmail(email) {
 		const valid = String(email)
@@ -21,26 +22,38 @@
 	let password = $state("");
 	let loggingIn = $state(false);
 
+	let errorMessage = $state("");
 	let buttonDisabled = $state(true);
 
-	onMount(() => {});
+	async function loginUser() {
+		const { data, error } = await authClient.signIn.email({
+			email: email,
+			password: password,
+			rememberMe: true,
+			callbackURL: "/"
+		});
+		if (error) {
+			errorMessage = error.message;
+			loggingIn = false;
+		}
+	}
 
-	$effect(() => {
+$effect(() => {
 		buttonDisabled = email === "" || password === "";
 	});
 </script>
 
 <div class="min-h-screen bg-black flex items-center justify-center p-4">
 	<div class="bg-black rounded-xl shadow-2xl p-8 max-w-md w-full border border-gray-700">
-		{#if form?.fail}
+		{#if errorMessage}
 			<div
 				class="px-5 py-3 mb-6 text-red-300 bg-red-900 rounded-lg bg-opacity-30 text-center font-medium"
 			>
-				{form.message}
+				{errorMessage}
 			</div>
 		{/if}
 
-		<form action="?/login" method="post" class="space-y-6">
+		<div class="space-y-6">
 			<label class="block">
 				<span class="block text-sm font-semibold text-gray-300 mb-2">Email Address</span>
 				<input
@@ -68,6 +81,7 @@
 			<button
 				onclick={() => {
 					loggingIn = !loggingIn;
+					loginUser();
 				}}
 				class="w-full px-6 py-3 mt-4 bg-white font-bold text-black rounded-lg shadow-lg focus:outline-none focus:ring-3 focus:ring-white focus:ring-opacity-75 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 ease-in-out"
 				type="submit"
@@ -79,7 +93,7 @@
 					Login
 				{/if}
 			</button>
-		</form>
+		</div>
 
 		<div class="mt-8 text-center text-gray-400 text-sm">
 			Don't have an account?

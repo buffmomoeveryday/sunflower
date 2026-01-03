@@ -7,6 +7,8 @@
 	import { getBgImage } from "$lib/state/bgImage.svelte";
 	import { fade } from "svelte/transition";
 	import { page } from "$app/stores";
+	import { setCurrentUser } from "$lib/state/user.svelte";
+	import { onMount } from "svelte";
 
 	let { children, data } = $props();
 	let gravitarUrl = $state(null);
@@ -17,9 +19,12 @@
 		return `https://www.gravatar.com/avatar/${emailHash}?d=${defaultImage}`;
 	}
 
-	if (data.user) {
-		gravitarUrl = generateAvatarUrl(data.user.email);
-	}
+	onMount(() => {
+		if (data.user) {
+			setCurrentUser(data.user);
+			gravitarUrl = generateAvatarUrl(data.user.email);
+		}
+	});
 </script>
 
 <Navbar user={data.user} {gravitarUrl} />
@@ -29,7 +34,7 @@
 		<div
 			in:fade={{ duration: 600 }}
 			out:fade={{ duration: 600 }}
-			class="fixed inset-0 h-screen w-screen bg-cover bg-center bg-no-repeat opacity-50 z-0"
+			class="absolute inset-0 h-screen w-screen bg-cover bg-center bg-no-repeat opacity-50 z-0"
 			style="background-image: url({bgImage});"
 		></div>
 	{/each}

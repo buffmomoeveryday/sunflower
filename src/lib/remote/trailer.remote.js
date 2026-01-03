@@ -39,7 +39,6 @@ export const getSeriesTrailer = command(v.string(), async (tmdb_id) => {
     ]);
 
     if (!videosRes.ok || !detailsRes.ok || !reviewsRes.ok) {
-      console.log("error")
       error(500, "TMDB request failed");
     }
 
@@ -56,7 +55,6 @@ export const getSeriesTrailer = command(v.string(), async (tmdb_id) => {
     const trailer = trailerVideo ? trailerVideo.key : null;
     const reviewResults = reviews.results ?? [];
 
-    console.log(trailer,reviewResults)
 
     return {
       trailer,

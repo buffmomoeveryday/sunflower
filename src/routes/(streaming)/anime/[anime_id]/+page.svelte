@@ -201,64 +201,74 @@
 		<div class="flex-1 flex flex-col md:w-3/4 lg:w-4/5 min-h-0">
 			<!-- Video Player Section -->
 			<div class="flex-1 flex flex-col p-4 md:p-6 min-h-0">
-				<!-- Title -->
-				<div class="mb-4 flex-shrink-0">
-					<h2 class="text-xl md:text-2xl font-bold text-white mb-2">
+				<!-- Title and Context -->
+				<div class="mb-6 flex-shrink-0">
+					<div class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-blue-500 mb-2">
+						<span>Anime</span>
+						<span class="text-gray-600">/</span>
+						<span>{anime_data.format || 'Series'}</span>
+						<span class="text-gray-600">/</span>
+						<span class="text-gray-300">Episode {episode.current}</span>
+					</div>
+					<h2 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight leading-none">
 						{anime_data.title.userPreferred || anime_data.title.romaji || anime_data.title.english}
 					</h2>
-					<div class="flex items-center gap-2 text-sm text-gray-400">
-						<span>Episode {episode.current}</span>
-						<!-- Add episode title if available from data -->
-						<!-- {#if episodes[selectedEpisode - 1]} -->
-						<!--   <span>&#8226;</span> -->
-						<!--   <span>{episodes[selectedEpisode - 1].name}</span> -->
-						<!-- {/if} -->
-					</div>
 				</div>
 				<!-- Video Player Container -->
-				<div class="relative flex-1 mb-4 min-h-0">
-					<!-- Loading Skeleton -->
-					{#if isPlayerLoading}
-						<div class="absolute inset-0 bg-gray-800 rounded-lg flex items-center justify-center">
-							<div class="flex flex-col items-center gap-4">
-								<div
-									class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"
-								></div>
-								<p class="text-gray-400">Loading episode...</p>
+				<div class="relative w-full aspect-video mb-6 rounded-2xl overflow-hidden bg-black shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/5 ring-1 ring-white/10">
+					{#key `${selectedSource.current}-${episode.current}-${iframeKey.current}`}
+						<!-- Loading Skeleton -->
+						{#if isPlayerLoading}
+							<div class="absolute inset-0 bg-gray-950/90 backdrop-blur-md flex items-center justify-center z-10 transition-all duration-500">
+								<div class="flex flex-col items-center gap-5">
+									<div class="relative">
+										<div class="w-20 h-20 border-2 border-white/5 rounded-full"></div>
+										<div class="absolute inset-0 w-20 h-20 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+										<div class="absolute inset-0 flex items-center justify-center">
+											<Play size={24} class="text-blue-500 animate-pulse" fill="currentColor" />
+										</div>
+									</div>
+									<div class="text-center">
+										<p class="text-white font-bold text-lg tracking-widest uppercase mb-1">Buffering</p>
+										<p class="text-white/40 text-xs font-medium">Preparing Episode {episode.current}</p>
+									</div>
+								</div>
 							</div>
-						</div>
-					{/if}
-					<!-- Video Player -->
-					<iframe
-						key={iframeKey}
-						src={iframeSources[selectedSource.current]}
-						class="w-full h-full border-2 border-gray-700 rounded-lg shadow-lg"
-						allowfullscreen
-						loading="lazy"
-						title="Anime Player"
-						onload={handleIframeLoad}
-						scrolling="no"
-					></iframe>
+						{/if}
+						<!-- Video Player -->
+						<iframe
+							src={iframeSources[selectedSource.current]}
+							class="absolute inset-0 w-full h-full"
+							allowfullscreen
+							loading="lazy"
+							title="Anime Player"
+							onload={handleIframeLoad}
+							scrolling="no"
+							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+						></iframe>
+					{/key}
 				</div>
 				<!-- Player Controls -->
 				<div
-					class="flex flex-wrap items-center justify-between gap-4 p-4 bg-gray-900 rounded-lg flex-shrink-0"
+					class="flex flex-wrap items-center justify-between gap-4 p-5 bg-white/5 border border-white/10 rounded-2xl flex-shrink-0 backdrop-blur-sm shadow-xl"
 				>
 					<!-- Server Selection -->
-					<div class="flex items-center gap-2">
-						<span class="text-sm font-medium text-gray-400">Server:</span>
-						{#each iframeSources as source, index}
-							<button
-								class={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-									index === selectedSource.current
-										? "bg-white text-black"
-										: "bg-gray-700 text-white hover:bg-gray-600"
-								}`}
-								onclick={() => changeSource(index)}
-							>
-								{index + 1}
-							</button>
-						{/each}
+					<div class="flex items-center gap-4">
+						<span class="text-sm font-bold text-gray-400 uppercase tracking-widest">Select Server</span>
+						<div class="flex gap-2">
+							{#each iframeSources as source, index}
+								<button
+									class={`px-4 py-2 text-sm font-bold rounded-xl transition-all duration-300 ${
+										index === selectedSource.current
+											? "bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] scale-105"
+											: "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+									}`}
+									onclick={() => changeSource(index)}
+								>
+									{index + 1}
+								</button>
+							{/each}
+						</div>
 					</div>
 				</div>
 			</div>
@@ -417,6 +427,7 @@
 	.line-clamp-1 {
 		display: -webkit-box;
 		-webkit-line-clamp: 1;
+		line-clamp: 1;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}
@@ -424,6 +435,7 @@
 	.line-clamp-2 {
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}

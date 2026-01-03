@@ -2,12 +2,11 @@
 	import { removeBgImage, setBgImage } from "$lib/state/bgImage.svelte";
 	import { Bookmark } from "lucide-svelte";
 	import { toast } from "svelte-sonner";
-	import { db } from "../../dexie";
+	import { db } from "$lib/db/dexie";
 	import { onMount } from "svelte";
 
 	let { id, tmdb_id, poster, name, vote, startDate, title, episodes } = $props();
 
-	let isBookmarked = $state(false);
 	const formatRating = (rating) => {
 		rating = rating / 10;
 		if (!rating || rating === 0) return "N/A";
@@ -22,12 +21,7 @@
 		return "bg-red-600";
 	};
 
-	let rating = formatRating(vote);
-	let ratingColor = getRatingColor(vote);
-	let year = startDate || "N/A"; // extract year only
-
 	async function toggleBookmark() {
-		console.log("helo");
 		try {
 			let marked = await db.animes_bookmark.where("tmdb_id").equals(id).first();
 			if (marked) {
@@ -52,6 +46,11 @@
 		}
 	}
 
+	let rating = formatRating(vote);
+	let ratingColor = getRatingColor(vote);
+	let year = startDate || "N/A";
+	let isBookmarked = $state(false);
+
 	onMount(async () => {
 		try {
 			let book = await db.animes_bookmark.where("tmdb_id").equals(id).first();
@@ -66,7 +65,6 @@
 <div class="group relative w-full max-w-sm mx-auto">
 	<button
 		onclick={() => {
-			console.log("Helo");
 			toggleBookmark();
 		}}
 		class="absolute top-3 left-3 z-10 bg-black/70 hover:bg-black/90 text-white p-2 rounded-full transition"

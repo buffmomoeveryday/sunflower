@@ -1,54 +1,55 @@
 <script>
 	import { onMount } from "svelte";
-	import { db } from "../../../lib/db/dexie";
+	import { 
+		getMoviesHistory, 
+		getSeriesHistory, 
+		getAnimeHistory, 
+		removeMovieHistory, 
+		removeSeriesHistory, 
+		removeAnimeHistory 
+	} from "$lib/remote/bookmarks.remote.js";
 	import MovieCard from "$lib/components/card/MovieCard.svelte";
 
-	let activeTab = "movies"; // 'movies' | 'series' | 'anime'
-	let movies = [];
-	let series = [];
-	let anime = [];
-	let loading = true;
+	let activeTab = $state("movies"); // 'movies' | 'series' | 'anime'
 
-	async function fetchData(type) {
-		try {
-			if (type === "movies") {
-				return await db["movies_watch_history"].toArray();
-			}
-			if (type === "series") {
-				return await db["series_watch_history"].toArray();
-			}
-			if (type === "anime") {
-				return await db["anime_watch_history"].toArray();
-			}
-		} catch (error) {
-			console.error(`Failed to fetch ${type}:`, error);
-			return [];
-		}
-	}
+	let movies = $state([]);
+	let series = $state([]);
+	let anime = $state([]);
+	let loading = $state(true);
 
 	async function loadAll() {
 		loading = true;
-		movies = await fetchData("movies");
-		series = await fetchData("series");
-		anime = await fetchData("anime");
-		loading = false;
+		try {
+			movies = await getMoviesHistory();
+			series = await getSeriesHistory();
+			anime = await getAnimeHistory();
+		} catch (error) {
+			console.error("Failed to load history:", error);
+		} finally {
+			loading = false;
+		}
 	}
 
 	async function removeItem(type, id) {
-		if (type === "movies") {
-			await db["movies_watch_history"].delete(id);
-		} else if (type === "series") {
-			await db["series_watch_history"].delete(id);
-		} else if (type === "anime") {
-			await db["anime_watch_history"].delete(id);
+		try {
+			if (type === "movies") {
+				await removeMovieHistory(id);
+			} else if (type === "series") {
+				await removeSeriesHistory(id);
+			} else if (type === "anime") {
+				await removeAnimeHistory(id);
+			}
+			await loadAll();
+		} catch (error) {
+			console.error("Failed to remove item:", error);
 		}
-		await loadAll();
 	}
 
 	onMount(async () => {
 		await loadAll();
 	});
 </script>
+
 
 <div class="min-h-screen bg-black text-white p-6">
 	<div class="max-w-6xl mx-auto bg-black rounded-2xl p-6 shadow-lg">
@@ -61,7 +62,8 @@
 				<button
 					class="relative pb-3 px-4 font-medium text-gray-400 hover:text-white transition-colors"
 					class:text-pink-400={activeTab === tab}
-					on:click={() => (activeTab = tab)}
+					onclick={() => (activeTab = tab)}
+
 				>
 					{tab.charAt(0).toUpperCase() + tab.slice(1)}
 					<span
@@ -90,7 +92,8 @@
 						<div class="mt-2 flex justify-end">
 							<button
 								class="text-xs text-white bg-pink-500 hover:bg-pink-600 px-3 py-1.5 rounded-lg transition-colors"
-								on:click={() => removeItem(activeTab, item.id)}
+								onclick={() => removeItem(activeTab, item.id)}
+
 							>
 								Remove
 							</button>

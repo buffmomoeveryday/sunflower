@@ -36,7 +36,6 @@
 			{@html channel.embedLink[selectedPlayer]}
 		</div>
 		
-		<!-- Overlay for a more premium feel if player is loading/inactive -->
 		<div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
 	</div>
 

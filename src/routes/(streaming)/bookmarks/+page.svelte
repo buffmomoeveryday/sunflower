@@ -2,7 +2,8 @@
 	import MovieCard from "$lib/components/card/MovieCard.svelte";
 	import SeriesCard from "$lib/components/card/SeriesCard.svelte";
 	import AnimeCard from "$lib/components/card/AnimeCard.svelte";
-	import { db } from "$lib/db/dexie";
+	import { getBookmarkedMovies, getBookmarkedSeries, getBookmarkedAnime } from "$lib/remote/bookmarks.remote.js";
+
 
 	import { PersistedState } from "runed";
 	import { toast } from "svelte-sonner";
@@ -15,10 +16,11 @@
 	let bookmarkedAnime = $state([]);
 
 	onMount(async () => {
-		bookmarkedMovies = await db.movies_bookmark.toArray();
-		bookmarkedSeries = await db.series_bookmark.toArray();
-		bookmarkedAnime = await db.animes_bookmark.toArray();
+		bookmarkedMovies = await getBookmarkedMovies();
+		bookmarkedSeries = await getBookmarkedSeries();
+		bookmarkedAnime = await getBookmarkedAnime();
 	});
+
 
 	function setActiveTab(tab) {
 		activeTab.current = tab;

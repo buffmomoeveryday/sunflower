@@ -71,33 +71,103 @@ export const verification = sqliteTable('verification', {
 // .......................
 export const moviesBookmark = sqliteTable("movies_bookmark", {
   id: text("id").primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
   tmdbId: text("tmdb_id").notNull(),
   posterPath: text("poster_path").notNull(),
   title: text("title").notNull(),
   voteAverage: text("vote_average").notNull(),
   releaseDate: text("release_date").notNull(),
   genreIds: text("genre_ids").notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .$defaultFn(() => new Date())
+    .notNull(),
 });
 
 export const seriesBookmark = sqliteTable("series_bookmark", {
 	id: text("id").primaryKey(),
-	tmdbId: text("tmdn_id").notNull(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+	tmdbId: text("tmdb_id").notNull(),
 	posterPath: text("poster_path").notNull(),
 	name: text("name").notNull(),
 	voteAverage: text("vote_average").notNull(),
 	firstAirDate: text("first_air_date").notNull(),
-	numberOfSeason: integer("number_of_seasons").notNull(),
-	
+	numberOfSeasons: integer("number_of_seasons").notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .$defaultFn(() => new Date())
+    .notNull(),
 })
 
-
-export const animesBookmark = sqliteTable("series_bookmark", {
+export const animesBookmark = sqliteTable("animes_bookmark", {
 	id: text("id").primaryKey(),
-	tmdbId: text("tmdn_id").notNull(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+	tmdbId: text("tmdb_id").notNull(),
+	poster: text("poster").notNull(),
+	name: text("name").notNull(),
+	vote: text("vote").notNull(),
+	startDate: text("start_date").notNull(),
+	title: text("title").notNull(),
+	episodes: integer("episodes").notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .$defaultFn(() => new Date())
+    .notNull(),
+})
+
+
+
+// .......................
+// Watch History
+// .......................
+export const moviesWatchHistory = sqliteTable("movies_watch_history", {
+	id: text("id").primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+	tmdbId: text("tmdb_id").notNull(),
+	posterPath: text("poster_path").notNull(),
+	title: text("title").notNull(),
+	voteAverage: text("vote_average").notNull(),
+	releaseDate: text("release_date").notNull(),
+	genreIds: text("genre_ids").notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+export const seriesWatchHistory = sqliteTable("series_watch_history", {
+	id: text("id").primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+	tmdbId: text("tmdb_id").notNull(),
 	posterPath: text("poster_path").notNull(),
 	name: text("name").notNull(),
 	voteAverage: text("vote_average").notNull(),
 	firstAirDate: text("first_air_date").notNull(),
-	numberOfSeason: integer("number_of_seasons").notNull(),
-	
-})
+	numberOfSeasons: integer("number_of_seasons").notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+export const animesWatchHistory = sqliteTable("animes_watch_history", {
+	id: text("id").primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+	tmdbId: text("tmdb_id").notNull(),
+	poster: text("poster").notNull(),
+	name: text("name").notNull(),
+	vote: text("vote").notNull(),
+	startDate: text("start_date").notNull(),
+	title: text("title").notNull(),
+	episodes: integer("episodes").notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .$defaultFn(() => new Date())
+    .notNull(),
+});

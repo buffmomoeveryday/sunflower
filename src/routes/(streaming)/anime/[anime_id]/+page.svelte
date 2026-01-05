@@ -15,6 +15,10 @@
 		Heart
 	} from "lucide-svelte";
 	import { toast } from "svelte-sonner";
+	import { toggleAnimeBookmark, addToAnimeHistory } from "$lib/remote/bookmarks.remote.js";
+	import { isAnimeBookmarkedLocal, addBookmarkLocal, removeBookmarkLocal } from "$lib/state/bookmarks.svelte.js";
+
+
 
 	let { data } = $props();
 
@@ -80,11 +84,56 @@
 		isSidebarVisible = !isSidebarVisible;
 	}
 
-	let isAddedToHome = $state(false);
-	async function toggleHomeStatus() {
-		isAddedToHome = !isAddedToHome;
-		toast.success(isAddedToHome ? "Added to Home (Mock)" : "Removed from Home (Mock)");
+	let isBookmarked = $derived(isAnimeBookmarkedLocal(anime_id));
+
+	async function toggleBookmark() {
+		try {
+			const result = await toggleAnimeBookmark({
+				tmdb_id: anime_id,
+				poster: anime_data.coverImage.extraLarge || anime_data.coverImage.large,
+				name: anime_data.title.userPreferred || anime_data.title.romaji || anime_data.title.english,
+				title: anime_data.title.english || anime_data.title.romaji || "",
+				vote: anime_data.averageScore || 0,
+				start_date: `${anime_data.startDate.year}-${anime_data.startDate.month}-${anime_data.startDate.day}`,
+				episodes: anime_data.episodes || 0
+			});
+
+			if (result.success) {
+				if (result.action === 'added') {
+					addBookmarkLocal('anime', anime_id);
+					toast.success("Added to bookmark");
+				} else {
+					removeBookmarkLocal('anime', anime_id);
+					toast.success("Removed from bookmark");
+				}
+			} else {
+				toast.error(result.error || "Failed to toggle bookmark");
+			}
+		} catch (e) {
+			console.error("Bookmark error:", e);
+		}
 	}
+
+	onMount(async () => {
+
+
+		setTimeout(async () => {
+			try {
+				await addToAnimeHistory({
+					tmdb_id: anime_id,
+					poster: anime_data.coverImage.extraLarge || anime_data.coverImage.large,
+					name: anime_data.title.userPreferred || anime_data.title.romaji || anime_data.title.english,
+					title: anime_data.title.english || anime_data.title.romaji || "",
+					vote: anime_data.averageScore || 0,
+					start_date: `${anime_data.startDate.year}-${anime_data.startDate.month}-${anime_data.startDate.day}`,
+					episodes: anime_data.episodes || 0
+				});
+			} catch (error) {
+				console.error("Error adding to watch history:", error);
+			}
+		}, 5000);
+	});
+
 </script>
 
 <div class="flex flex-col min-h-screen text-white bg-black">
@@ -106,14 +155,15 @@
 		<!-- Placeholder for Watchlist Button if user data is available -->
 		{#if user}
 			<button
-				onclick={toggleHomeStatus}
+				onclick={toggleBookmark}
 				class="p-2 transition-colors duration-200 hover:bg-gray-800 rounded-lg"
 			>
 				<Heart
 					size={20}
-					color={isAddedToHome ? "#fb2c36" : "white"}
-					fill={isAddedToHome ? "#fb2c36" : "none"}
+					color={isBookmarked ? "#fb2c36" : "white"}
+					fill={isBookmarked ? "#fb2c36" : "none"}
 				/>
+
 			</button>
 		{/if}
 	</div>

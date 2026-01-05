@@ -1,6 +1,6 @@
 import { command } from "$app/server";
 import * as v from "valibot";
-import { fetchDiscover } from "$lib/services/tmdb.service";
+import { fetchDiscover } from "$lib/services/tmdbService";
 
 const DiscoverSchema = v.object({
     type: v.string(),

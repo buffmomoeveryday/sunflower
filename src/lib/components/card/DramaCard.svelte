@@ -1,4 +1,12 @@
 <script>
+	import { toggleSeriesBookmark } from "$lib/remote/bookmarks.remote.js";
+	import { isSeriesBookmarkedLocal, addBookmarkLocal, removeBookmarkLocal } from "$lib/state/bookmarks.svelte.js";
+
+
+	import { Bookmark } from "lucide-svelte";
+	import { toast } from "svelte-sonner";
+	import { onMount } from "svelte";
+
 	let { id, poster_path, name, vote_average, first_air_date, number_of_seasons } = $props();
 
 	// Format rating with proper handling for missing values
@@ -32,7 +40,40 @@
 	let ratingColor = getRatingColor(vote_average);
 	let year = getYear(first_air_date);
 	let seasonsText = getSeasonsText(number_of_seasons);
+
+	let isBookmarked = $derived(isSeriesBookmarkedLocal(id));
+
+
+	async function toggleBookmark() {
+		try {
+			const result = await toggleSeriesBookmark({
+				tmdb_id: id,
+				poster_path,
+				name,
+				vote_average: vote_average.toString(),
+				first_air_date: first_air_date || "",
+				number_of_seasons: number_of_seasons || 1
+			});
+
+			if (result.success) {
+				if (result.action === 'added') {
+					addBookmarkLocal('series', id);
+					toast.success("Added to bookmark");
+				} else {
+					removeBookmarkLocal('series', id);
+					toast.success("Removed from bookmark");
+				}
+			} else {
+				toast.error(result.error || "Failed to toggle bookmark");
+			}
+		} catch (e) {
+			console.error("Bookmark error:", e);
+		}
+	}
+
+
 </script>
+
 
 <div class="group relative w-full max-w-sm mx-auto">
 	<!-- Main card container -->
@@ -93,7 +134,25 @@
 					</div>
 				{/if}
 
+				<!-- Bookmark button (top left) -->
+				<div class="absolute top-3 left-3 z-20">
+					<button
+						onclick={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							toggleBookmark();
+						}}
+						class="p-2 bg-black/50 backdrop-blur-md rounded-full border border-white/10 hover:bg-black/70 transition-all duration-300 group/btn"
+					>
+						<Bookmark
+							size={18}
+							class={`transition-all duration-300 ${isBookmarked ? "fill-purple-500 stroke-purple-500 scale-110" : "text-white group-hover/btn:scale-110"}`}
+						/>
+					</button>
+				</div>
+
 				<!-- Play button overlay (appears on hover) -->
+
 				<div
 					class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
 				>
@@ -161,9 +220,11 @@
 	.line-clamp-2 {
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}
+
 
 	.aspect-\[2\/3\] {
 		aspect-ratio: 2/3;

@@ -8,7 +8,9 @@
 	import { fade } from "svelte/transition";
 	import { page } from "$app/stores";
 	import { setCurrentUser } from "$lib/state/user.svelte";
+	import { setBookmarks } from "$lib/state/bookmarks.svelte.js";
 	import { onMount } from "svelte";
+
 
 	let { children, data } = $props();
 	let gravitarUrl = $state(null);
@@ -23,8 +25,12 @@
 		if (data.user) {
 			setCurrentUser(data.user);
 			gravitarUrl = generateAvatarUrl(data.user.email);
+			if (data.bookmarks) {
+				setBookmarks(data.bookmarks);
+			}
 		}
 	});
+
 </script>
 
 <Navbar user={data.user} {gravitarUrl} />

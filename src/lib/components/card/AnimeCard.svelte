@@ -2,8 +2,10 @@
 	import { removeBgImage, setBgImage } from "$lib/state/bgImage.svelte";
 	import { Bookmark } from "lucide-svelte";
 	import { toast } from "svelte-sonner";
-	import { db } from "$lib/db/dexie";
+	import { toggleAnimeBookmark } from "$lib/remote/bookmarks.remote.js";
+	import { isAnimeBookmarkedLocal, addBookmarkLocal, removeBookmarkLocal } from "$lib/state/bookmarks.svelte.js";
 	import { onMount } from "svelte";
+
 
 	let { id, tmdb_id, poster, name, vote, startDate, title, episodes } = $props();
 
@@ -23,23 +25,26 @@
 
 	async function toggleBookmark() {
 		try {
-			let marked = await db.animes_bookmark.where("tmdb_id").equals(id).first();
-			if (marked) {
-				await db.animes_bookmark.where("tmdb_id").equals(id).delete();
-				isBookmarked = false;
-				toast.success("Removed from bookmark");
+			const result = await toggleAnimeBookmark({
+				tmdb_id: id,
+				poster,
+				name,
+				title,
+				vote,
+				start_date: startDate,
+				episodes
+			});
+
+			if (result.success) {
+				if (result.action === 'added') {
+					addBookmarkLocal('anime', id);
+					toast.success("Added to bookmark");
+				} else {
+					removeBookmarkLocal('anime', id);
+					toast.success("Removed from bookmark");
+				}
 			} else {
-				await db.animes_bookmark.add({
-					tmdb_id: id,
-					poster,
-					name,
-					title,
-					vote,
-					start_date: startDate,
-					episodes
-				});
-				isBookmarked = true;
-				toast.success("Added to bookmark");
+				toast.error(result.error || "Failed to toggle bookmark");
 			}
 		} catch (e) {
 			console.error("Bookmark error:", e);
@@ -49,17 +54,12 @@
 	let rating = formatRating(vote);
 	let ratingColor = getRatingColor(vote);
 	let year = startDate || "N/A";
-	let isBookmarked = $state(false);
+	let isBookmarked = $derived(isAnimeBookmarkedLocal(id));
 
-	onMount(async () => {
-		try {
-			let book = await db.animes_bookmark.where("tmdb_id").equals(id).first();
-			if (book) isBookmarked = true;
-		} catch (e) {
-			console.error("Bookmark check error:", e);
-		}
-	});
+
+
 </script>
+
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="group relative w-full max-w-sm mx-auto">
@@ -178,16 +178,20 @@
 	.line-clamp-1 {
 		display: -webkit-box;
 		-webkit-line-clamp: 1;
+		line-clamp: 1;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}
 
+
 	.line-clamp-2 {
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}
+
 
 	.aspect-\[2\/3\] {
 		aspect-ratio: 2 / 3;

@@ -1,6 +1,5 @@
 <script>
 	import { page } from "$app/stores";
-	import { BaseAuthStore } from "pocketbase";
 	import { onMount } from "svelte";
 	import { authClient } from "$lib/auth/auth-client.js";
 	let { form } = $props();

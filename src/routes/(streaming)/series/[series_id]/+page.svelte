@@ -1,7 +1,10 @@
 <script>
-	import { db } from "$lib/db/dexie";
+	import { toggleSeriesBookmark, addToSeriesHistory } from "$lib/remote/bookmarks.remote.js";
+	import { isSeriesBookmarkedLocal, addBookmarkLocal, removeBookmarkLocal } from "$lib/state/bookmarks.svelte.js";
 	import { onMount } from "svelte";
+
 	import { toast } from "svelte-sonner";
+
 	import { PersistedState } from "runed";
 	import { getEpisodes } from "$lib/remote/series.remote";
 	import {
@@ -29,7 +32,8 @@
 	const selectedEpisode = new PersistedState(`selected_episodes_${seriesDetailData.id}`, 1);
 
 	let episodes = $state([]);
-	let isBookmarked = $state(false);
+	let isBookmarked = $derived(isSeriesBookmarkedLocal(seriesDetailData.id));
+
 	let isSidebarVisible = $state(false);
 	let isPlayerLoading = $state(true);
 
@@ -175,41 +179,37 @@
 
 	async function toggleBookmark() {
 		try {
-			let marked = await db.series_bookmark.where("tmdb_id").equals(seriesDetailData.id).first();
-			if (marked) {
-				await db.series_bookmark.where("tmdb_id").equals(seriesDetailData.id).delete();
-				isBookmarked = false;
-				toast.success("Removed from bookmark");
+			const result = await toggleSeriesBookmark({
+				tmdb_id: seriesDetailData.id,
+				poster_path: seriesDetailData.poster_path,
+				name: seriesDetailData.name,
+				vote_average: seriesDetailData.vote_average,
+				first_air_date: seriesDetailData.first_air_date,
+				number_of_seasons: seriesDetailData.number_of_seasons
+			});
+
+			if (result.success) {
+				if (result.action === 'added') {
+					addBookmarkLocal('series', seriesDetailData.id);
+					toast.success("Added to bookmark");
+				} else {
+					removeBookmarkLocal('series', seriesDetailData.id);
+					toast.success("Removed from bookmark");
+				}
 			} else {
-				await db.series_bookmark.add({
-					tmdb_id: seriesDetailData.id,
-					poster_path: seriesDetailData.poster_path,
-					name: seriesDetailData.name,
-					vote_average: seriesDetailData.vote_average,
-					first_air_date: seriesDetailData.first_air_date,
-					number_of_seasons: seriesDetailData.first_air_date
-				});
-				isBookmarked = true;
-				toast.success("Added to bookmark");
+				toast.error(result.error || "Failed to toggle bookmark");
 			}
 		} catch (e) {
 			console.error("Bookmark error:", e);
 		}
-	}
-
-	onMount(async () => {
-		let book = await db.series_bookmark.where("tmdb_id").equals(seriesDetailData.id).first();
-		if (book) isBookmarked = true;
-
+	}	onMount(async () => {
 		await fetchEpisodes(selectedSeason.current);
+
 		await getProgress();
+		
 		setTimeout(async () => {
-			let series = await db.series_watch_history
-				.where("tmdb_id")
-				.equals(seriesDetailData.id)
-				.first();
-			if (!series) {
-				await db.series_watch_history.add({
+			try {
+				await addToSeriesHistory({
 					tmdb_id: seriesDetailData.id,
 					poster_path: seriesDetailData.poster_path,
 					name: seriesDetailData.name,
@@ -217,9 +217,12 @@
 					first_air_date: seriesDetailData.first_air_date,
 					number_of_seasons: seriesDetailData.number_of_seasons
 				});
+			} catch (error) {
+				console.error("Error adding to watch history:", error);
 			}
 		}, 5000);
 	});
+
 </script>
 
 <svelte:window

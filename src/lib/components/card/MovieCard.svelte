@@ -1,9 +1,11 @@
 <script>
 	import { goto } from "$app/navigation";
-	import { db } from "$lib/db/dexie";
+	import { toggleMovieBookmark } from "$lib/remote/bookmarks.remote.js";
+	import { isMovieBookmarkedLocal, addBookmarkLocal, removeBookmarkLocal } from "$lib/state/bookmarks.svelte.js";
 	import { watch } from "runed";
 	import { toast } from "svelte-sonner";
 	import { onMount } from "svelte";
+
 	import { Bookmark } from "lucide-svelte";
 	import { getMovieTrailer } from "../../remote/trailer.remote.js";
 	import { browser } from "$app/environment";
@@ -11,7 +13,8 @@
 
 	let { id, tmdb_id, poster_path, title, vote_average, release_date, genre_ids = [] } = $props();
 
-	let isBookmarked = $state(false);
+	let isBookmarked = $derived(isMovieBookmarkedLocal(id));
+
 	let showTrailer = $state(false);
 	let trailer_key = $derived.by(async () => {
 		if (showTrailer) {
@@ -23,23 +26,25 @@
 
 	async function toggleBookmark() {
 		try {
-			let marked = await db.movies_bookmark.where("tmdb_id").equals(id).first();
+			const result = await toggleMovieBookmark({
+				id,
+				poster_path,
+				title,
+				vote_average,
+				release_date,
+				genre_ids
+			});
 
-			if (marked) {
-				await db.movies_bookmark.delete(marked.id);
-				isBookmarked = false;
-				toast.success("Removed from bookmark");
+			if (result.success) {
+				if (result.action === 'added') {
+					addBookmarkLocal('movie', id);
+					toast.success("Added to bookmark");
+				} else {
+					removeBookmarkLocal('movie', id);
+					toast.success("Removed from bookmark");
+				}
 			} else {
-				await db.movies_bookmark.add({
-					tmdb_id: id,
-					poster_path: poster_path,
-					title: title,
-					vote_average: vote_average,
-					release_date: release_date,
-					genre_ids: genre_ids
-				});
-				isBookmarked = true;
-				toast.success("Added to bookmark");
+				toast.error(result.error || "Failed to toggle bookmark");
 			}
 		} catch (error) {
 			console.error("Error toggling bookmark:", error);
@@ -77,19 +82,9 @@
 		}
 	);
 
-	onMount(async () => {
-		try {
-			let book = await db.movies_bookmark.where("tmdb_id").equals(id).first();
-			if (book) {
-				isBookmarked = true;
-			}
-		} catch (error) {
-			console.error("Error checking bookmark status:", error);
-		}
-	});
+
 </script>
 
-<svelte:window on:keydown={(e) => e.key === "Escape" && (showTrailer = false)} />
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div

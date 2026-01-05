@@ -21,10 +21,15 @@
 		{ name: "Anime", path: "/anime", icon: "search" },
 		{ name: "Dramas", path: "/dramas", icon: "search" },
 		{ name: "Channels", path: "/channels", icon: "search" },
-		{ name: "Bookmarks", path: "/bookmarks", icon: "bookmarks" },
-		{ name: "Watch History", path: "/watch-history", icon: "watch history" },
+		...(usr
+			? [
+					{ name: "Bookmarks", path: "/bookmarks", icon: "bookmarks" },
+					{ name: "Watch History", path: "/watch-history", icon: "watch history" }
+				]
+			: []),
 		{ name: "Search", path: "/search", icon: "search" }
 	]);
+
 
 	function isActive(path) {
 		if (path === "/") {

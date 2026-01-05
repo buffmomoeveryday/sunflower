@@ -1,5 +1,7 @@
 <script>
-	import { db } from "$lib/db/dexie";
+	import { toggleSeriesBookmark } from "$lib/remote/bookmarks.remote.js";
+	import { isSeriesBookmarkedLocal, addBookmarkLocal, removeBookmarkLocal } from "$lib/state/bookmarks.svelte.js";
+
 	import { Bookmark, Play } from "lucide-svelte";
 	import { watch } from "runed";
 	import { toast } from "svelte-sonner";
@@ -29,7 +31,8 @@
 	let year = getYear(first_air_date);
 	let seasonsText = getSeasonsText(number_of_seasons);
 
-	let isBookmarked = $state(false);
+	let isBookmarked = $derived(isSeriesBookmarkedLocal(tmdb_id || id));
+
 	let showTrailer = $state(false);
 	let trailerDetails = $state(null);
 	let trailerReviews = $state([]);
@@ -37,33 +40,32 @@
 
 	async function toggleBookmark() {
 		try {
-			let marked = await db.series_bookmark
-				.where("tmdb_id")
-				.equals(tmdb_id || id)
-				.first();
-			if (marked) {
-				await db.series_bookmark
-					.where("tmdb_id")
-					.equals(tmdb_id || id)
-					.delete();
-				isBookmarked = false;
-				toast.success("Removed from bookmark");
+			const result = await toggleSeriesBookmark({
+				tmdb_id: tmdb_id || id,
+				poster_path,
+				name,
+				vote_average,
+				first_air_date,
+				number_of_seasons: number_of_seasons || 1
+			});
+
+			if (result.success) {
+				const finalId = tmdb_id || id;
+				if (result.action === 'added') {
+					addBookmarkLocal('series', finalId);
+					toast.success("Added to bookmark");
+				} else {
+					removeBookmarkLocal('series', finalId);
+					toast.success("Removed from bookmark");
+				}
 			} else {
-				await db.series_bookmark.add({
-					tmdb_id: tmdb_id || id,
-					poster_path,
-					name,
-					vote_average,
-					first_air_date,
-					number_of_seasons
-				});
-				isBookmarked = true;
-				toast.success("Added to bookmark");
+				toast.error(result.error || "Failed to toggle bookmark");
 			}
 		} catch (e) {
 			console.error("Bookmark error:", e);
 		}
 	}
+
 
 	watch(
 		() => showTrailer,
@@ -80,16 +82,9 @@
 	let user = $state();
 	onMount(async () => {
 		user = getCurrentUser();
-		try {
-			let book = await db.series_bookmark
-				.where("tmdb_id")
-				.equals(tmdb_id || id)
-				.first();
-			if (book) isBookmarked = true;
-		} catch (e) {
-			console.error("Bookmark check error:", e);
-		}
 	});
+
+
 </script>
 
 <svelte:window on:keydown={(e) => e.key === "Escape" && (showTrailer = false)} />

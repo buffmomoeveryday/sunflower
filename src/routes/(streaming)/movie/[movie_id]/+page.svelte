@@ -1,6 +1,8 @@
 <script>
 	import { page } from "$app/stores";
-	import { db } from "$lib/db/dexie";
+	import { toggleMovieBookmark, addToMovieHistory } from "$lib/remote/bookmarks.remote.js";
+	import { isMovieBookmarkedLocal, addBookmarkLocal, removeBookmarkLocal } from "$lib/state/bookmarks.svelte.js";
+
 	import { goto } from "$app/navigation";
 	import { onMount } from "svelte";
 	import { toast } from "svelte-sonner";
@@ -9,8 +11,10 @@
 	import { Menu, X, Info } from "lucide-svelte";
 	import MovieCard from "$lib/components/card/MovieCard.svelte";
 
+
 	let { data } = $props();
-	let isBookmarked = $state(false);
+	let isBookmarked = $derived(isMovieBookmarkedLocal(movie_data.id));
+
 
 	let user = data?.user;
 	let movie_data = data.movieData;
@@ -104,51 +108,49 @@
 
 	async function toggleBookmark() {
 		try {
-			let marked = await db.movies_bookmark.where("tmdb_id").equals(movie_data.id).first();
+			const result = await toggleMovieBookmark({
+				id: movie_data.id,
+				poster_path: movie_data.poster_path,
+				title: movie_data.title,
+				vote_average: movie_data.vote_average,
+				release_date: movie_data.release_date,
+				genre_ids: movie_data.genre_ids
+			});
 
-			if (marked) {
-				await db.movies_bookmark.delete(marked.id);
-				isBookmarked = false;
-				toast.success("Removed from bookmark");
+			if (result.success) {
+				if (result.action === 'added') {
+					addBookmarkLocal('movie', movie_data.id);
+					toast.success("Added to bookmark");
+				} else {
+					removeBookmarkLocal('movie', movie_data.id);
+					toast.success("Removed from bookmark");
+				}
 			} else {
-				await db.movies_bookmark.add({
-					tmdb_id: movie_data.id,
-					poster_path: movie_data.poster_path,
-					title: movie_data.title,
-					vote_average: movie_data.vote_average,
-					release_date: movie_data.release_date,
-					genre_ids: movie_data.genre_ids,
-					addedAt: new Date().toISOString()
-				});
-				isBookmarked = true;
-				toast.success("Added to bookmark");
+				toast.error(result.error || "Failed to toggle bookmark");
 			}
 		} catch (error) {
 			console.error("Error toggling bookmark:", error);
 		}
 	}
+
 	onMount(async () => {
-		let book = await db.movies_bookmark.where("tmdb_id").equals(movie_data.id).first();
-		if (book) {
-			isBookmarked = true;
-		}
 		setTimeout(async () => {
+
 			try {
-				let movie = await db.movies_watch_history.where("tmdb_id").equals(movie_data.id).first();
-				if (!movie) {
-					await db.movies_watch_history.add({
-						tmdb_id: movie_data.id,
-						poster_path: movie_data.poster_path,
-						title: movie_data.title,
-						vote_average: movie_data.vote_average,
-						release_date: movie_data.release_date,
-						genre_ids: movie_data.genre_ids,
-						addedAt: new Date().toISOString()
-					});
-				}
-			} catch (error) {}
+				await addToMovieHistory({
+					id: movie_data.id,
+					poster_path: movie_data.poster_path,
+					title: movie_data.title,
+					vote_average: movie_data.vote_average,
+					release_date: movie_data.release_date,
+					genre_ids: movie_data.genre_ids
+				});
+			} catch (error) {
+				console.error("Error adding to watch history:", error);
+			}
 		}, 5000);
 	});
+
 
 	function handleMessage() {
 		if (data.type === "PLAYER_EVENT") {

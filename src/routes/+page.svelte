@@ -29,23 +29,26 @@
 					<h2 class="text-xl font-bold md:text-2xl">{titleName}</h2>
 					<span class="text-sm text-gray-400">{movies_series.results.length} items</span>
 				</div>
-				<div class="mt-4 overflow-x-auto scrollbar-hide">
+				<div class="mt-4 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-4">
 					<div
-						class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+						class="flex sm:grid flex-nowrap sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
 					>
 						{#each movies_series.results as m}
-							{#if m.media_type == "tv"}
-								<SeriesCard
-									tmdb_id={m.id}
-									poster_path={m.poster_path}
-									name={m.name}
-									vote_average={m.vote_average}
-									first_air_date={m.first_air_date}
-									number_of_seasons={m.number_of_seasons}
-								/>
-							{:else}
-								<MovieCard {...m} />
-							{/if}
+							<div class="flex-none w-[170px] sm:w-auto">
+								{#if m.media_type == "tv"}
+									<SeriesCard
+										tmdb_id={m.id}
+										poster_path={m.poster_path}
+										name={m.name}
+										vote_average={m.vote_average}
+										first_air_date={m.first_air_date}
+										number_of_seasons={m.number_of_seasons}
+										genre_ids={m.genre_ids}
+									/>
+								{:else}
+									<MovieCard {...m} />
+								{/if}
+							</div>
 						{/each}
 					</div>
 				</div>

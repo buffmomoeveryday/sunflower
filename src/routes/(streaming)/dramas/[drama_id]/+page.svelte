@@ -1,6 +1,9 @@
 <script>
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
+	import { toggleSeriesBookmark, addToSeriesHistory } from "$lib/remote/bookmarks.remote.js";
+	import { isSeriesBookmarkedLocal, addBookmarkLocal, removeBookmarkLocal } from "$lib/state/bookmarks.svelte.js";
+	import { getEpisodes } from "$lib/remote/series.remote";
 	import {
 		Heart,
 		ChevronLeft,
@@ -23,14 +26,11 @@
 	let selectedSeason = $state(1);
 	let episodes = $state([]);
 	let selectedEpisode = $state(1);
-	let isAddedToHome = $state(false);
 	let isSidebarVisible = $state(false); // Start hidden on mobile
 	let isPlayerLoading = $state(true); // Track loading state
 
-	// Local storage keys
-	const STORAGE_KEY = `series_${seriesDetailData.id}_progress`;
-	const HOME_STORAGE_KEY = 'homepage_series';
-	const SERIES_ADDED_KEY = `series_${seriesDetailData.id}_added`;
+	let isBookmarked = $derived(isSeriesBookmarkedLocal(seriesDetailData.id));
+
 
 	// Derived State
 	let iframeSources = $derived([
@@ -65,198 +65,76 @@
 	});
 
 	async function updateProgressInDatabase() {
-		if (!isAddedToHome) return;
 		if (!user) return;
 		try {
-			const response = await fetch('/api/series/watchlist/save', {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					user_id: data.user.id,
-					tmdb_id: seriesDetailData.id,
-					season_id: selectedSeason,
-					episode_id: selectedEpisode,
-					title: seriesDetailData.name,
-					poster_path: seriesDetailData.poster_path,
-					average_ratings: seriesDetailData.vote_average
-				})
-			});
-			if (!response.ok) {
-				const result = await response.json();
-				throw new Error(result.message || 'Failed to update progress');
-			}
-		} catch (error) {
-			console.error('Error updating progress:', error);
-			toast.error('Failed to save progress');
-		}
-	}
-	async function callWatchlistAPI(action) {
-		if (!user) return;
-		try {
-			if (action === 'add') {
-				const response = await fetch('/api/series/watchlist/save', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						user_id: data.user.id,
-						tmdb_id: seriesDetailData.id,
-						season_id: selectedSeason,
-						episode_id: selectedEpisode,
-						title: seriesDetailData.name,
-						poster_path: seriesDetailData.poster_path,
-						average_ratings: seriesDetailData.vote_average
-					})
-				});
-				const result = await response.json();
-				if (response.ok) {
-					toast.success('Added to watchlist');
-				} else {
-					throw new Error(result.message || 'Failed to add to watchlist');
-				}
-			} else if (action === 'remove') {
-				const response = await fetch('/api/series/watchlist/save', {
-					method: 'DELETE',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ id: seriesDetailData.id, user_id: user.id })
-				});
-				if (response.ok) {
-					toast.success('Removed from watchlist');
-				} else {
-					const result = await response.json();
-					throw new Error(result.message || 'Failed to remove from watchlist');
-				}
-			}
-		} catch (error) {
-			console.error('Error calling watchlist API:', error);
-			toast.error('An error occurred');
-		}
-	}
-	function checkIfSeriesInHome() {
-		const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
-		return storedSeries.some((series) => series.id === seriesDetailData.id);
-	}
-	function storeSeriesDataOnceWithDelay() {
-		const isSeriesAlreadyAdded = localStorage.getItem(SERIES_ADDED_KEY);
-		if (!isSeriesAlreadyAdded) {
-			setTimeout(async () => {
-				const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
-				const seriesData = {
-					id: seriesDetailData.id,
-					name: seriesDetailData.name,
-					poster_path: seriesDetailData.poster_path,
-					first_air_date: seriesDetailData.first_air_date,
-					vote_average: seriesDetailData.vote_average,
-					addedAt: new Date().toISOString(),
-					user_id: user.id
-				};
-				storedSeries.push(seriesData);
-				localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedSeries));
-				localStorage.setItem(SERIES_ADDED_KEY, 'true');
-				isAddedToHome = true;
-				if (data.user.id) await callWatchlistAPI('add');
-			}, 4000);
-		}
-	}
-	async function toggleHomeStatus() {
-		const storedSeries = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || '[]');
-		if (isAddedToHome) {
-			const updatedSeries = storedSeries.filter((series) => series.id !== seriesDetailData.id);
-			localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(updatedSeries));
-			isAddedToHome = false;
-			if (data.user.id) {
-				await callWatchlistAPI('remove');
-			}
-		} else {
-			const seriesData = {
-				id: seriesDetailData.id,
-				name: seriesDetailData.name,
+			await addToSeriesHistory({
+				tmdb_id: seriesDetailData.id,
 				poster_path: seriesDetailData.poster_path,
-				first_air_date: seriesDetailData.first_air_date,
+				name: seriesDetailData.name,
 				vote_average: seriesDetailData.vote_average,
-				addedAt: new Date().toISOString(),
-				user_id: user.id
-			};
-			storedSeries.push(seriesData);
-			localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedSeries));
-			isAddedToHome = true;
-			if (data.user.id) await callWatchlistAPI('add');
+				first_air_date: seriesDetailData.first_air_date,
+				number_of_seasons: seriesDetailData.number_of_seasons,
+				season_id: selectedSeason,
+				episode_id: selectedEpisode
+			});
+		} catch (error) {
+			console.error("Error updating progress:", error);
 		}
 	}
+
+	async function toggleBookmark() {
+		if (!user) {
+			toast.error("Please login to bookmark");
+			return;
+		}
+		try {
+			const result = await toggleSeriesBookmark({
+				tmdb_id: seriesDetailData.id,
+				poster_path: seriesDetailData.poster_path,
+				name: seriesDetailData.name,
+				vote_average: seriesDetailData.vote_average,
+				first_air_date: seriesDetailData.first_air_date,
+				number_of_seasons: seriesDetailData.number_of_seasons
+			});
+
+			if (result.success) {
+				if (result.action === "added") {
+					addBookmarkLocal("series", seriesDetailData.id);
+					toast.success("Added to bookmark");
+				} else {
+					removeBookmarkLocal("series", seriesDetailData.id);
+					toast.success("Removed from bookmark");
+				}
+			} else {
+				toast.error(result.error || "Failed to toggle bookmark");
+			}
+		} catch (e) {
+			console.error("Bookmark error:", e);
+		}
+	}
+
 	async function fetchEpisodes(seasonNumber) {
 		selectedSeason = seasonNumber;
-		try {
-			let response = await fetch('/api/series/episodes', {
-				method: 'POST',
-				body: new URLSearchParams({
-					tv_id: seriesDetailData.id,
-					season_number: seasonNumber
-				})
-			});
-			let result = await response.json();
-			episodes = result.episodes;
-			await updateProgressInDatabase();
-		} catch (error) {
-			console.error('Error fetching episodes:', error);
-		}
+		let result = await getEpisodes({
+			tvId: seriesDetailData.id.toString(),
+			seasonNumber: seasonNumber.toString()
+		});
+		episodes = result.episodes;
+		await updateProgressInDatabase();
 	}
 	async function selectEpisode(episodeId) {
 		selectedEpisode = episodeId;
 		isPlayerLoading = true; // Set loading state when changing episodes
-		saveProgressAndSelectedSource();
 		await updateProgressInDatabase();
-	}
-	function saveProgressAndSelectedSource() {
-		localStorage.setItem(
-			STORAGE_KEY,
-			JSON.stringify({
-				season: selectedSeason,
-				episode: selectedEpisode,
-				source: selectedSource
-			})
-		);
-	}
-	function loadProgressAndSelectedSource() {
-		const progress = localStorage.getItem(STORAGE_KEY);
-		if (progress) {
-			const { season, episode, source } = JSON.parse(progress);
-			selectedSeason = season;
-			selectedEpisode = episode;
-			selectedSource = source || 1;
-		}
 	}
 	function changeSource(index) {
 		selectedSource = index;
 		isPlayerLoading = true; // Set loading state when changing sources
-		saveProgressAndSelectedSource();
 	}
 	function handleIframeLoad() {
 		isPlayerLoading = false; // Remove loading state when iframe loads
 	}
-	async function getProgress() {
-		if (user) {
-			try {
-				let response = await fetch('/api/series/watchlist/get', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						user_id: data.user.id,
-						tmdb_id: seriesDetailData.id
-					})
-				});
-				if (response.ok) {
-					isAddedToHome = true;
-					let result = await response.json();
-					if (result.records) {
-						selectedSeason = result.records.season_id;
-						selectedEpisode = result.records.episode_id;
-						isAddedToHome = !isAddedToHome;
-					}
-				}
-			} catch (error) {
-				console.error('Error fetching watchlist data:', error);
-			}
-		}
-	}
+	async function getProgress() {}
 	function previousEpisode() {
 		if (selectedEpisode > 1) {
 			selectEpisode(selectedEpisode - 1);
@@ -289,11 +167,14 @@
 	}
 
 	onMount(async () => {
-		storeSeriesDataOnceWithDelay();
 		await getProgress();
-		loadProgressAndSelectedSource();
 		await fetchEpisodes(selectedSeason);
-		isAddedToHome = checkIfSeriesInHome();
+
+		if (user) {
+			setTimeout(async () => {
+				await updateProgressInDatabase();
+			}, 5000);
+		}
 	});
 </script>
 
@@ -315,13 +196,13 @@
 		</h1>
 		{#if user}
 			<button
-				onclick={toggleHomeStatus}
+				onclick={toggleBookmark}
 				class="p-2 transition-colors duration-200 hover:bg-gray-800 rounded-lg"
 			>
 				<Heart
 					size={20}
-					color={isAddedToHome ? '#fb2c36' : 'white'}
-					fill={isAddedToHome ? '#fb2c36' : 'none'}
+					color={isBookmarked ? '#fb2c36' : 'white'}
+					fill={isBookmarked ? '#fb2c36' : 'none'}
 				/>
 			</button>
 		{/if}
@@ -351,14 +232,14 @@
 					{#if user}
 						<button
 							class="hidden md:flex items-center gap-2 w-full p-3 mb-6 transition-colors duration-200 bg-black border border-gray-700 rounded-lg hover:bg-gray-800"
-							onclick={toggleHomeStatus}
+							onclick={toggleBookmark}
 						>
 							<Heart
 								size={20}
-								color={isAddedToHome ? '#fb2c36' : 'white'}
-								fill={isAddedToHome ? '#fb2c36' : 'none'}
+								color={isBookmarked ? '#fb2c36' : 'white'}
+								fill={isBookmarked ? '#fb2c36' : 'none'}
 							/>
-							<span class="text-sm">{isAddedToHome ? 'Added to Home' : 'Add to Home'}</span>
+							<span class="text-sm">{isBookmarked ? 'Added to Home' : 'Add to Home'}</span>
 						</button>
 					{/if}
 					<!-- Season Selection -->

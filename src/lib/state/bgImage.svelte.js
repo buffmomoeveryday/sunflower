@@ -1,4 +1,3 @@
-import { PersistedState } from "runed";
 
 let bgImage = $state(null)
 

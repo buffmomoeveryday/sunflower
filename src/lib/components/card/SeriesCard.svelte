@@ -10,8 +10,10 @@
 	import { removeBgImage, setBgImage } from "$lib/state/bgImage.svelte";
 	import { getCurrentUser } from "$lib/state/user.svelte";
 
-	let { tmdb_id, id, poster_path, name, vote_average, first_air_date, number_of_seasons } =
+	let { tmdb_id, id, poster_path, name, vote_average, first_air_date, number_of_seasons, genre_ids = [] } =
 		$props();
+ 
+	import { getGenreName } from "$lib/state/genres.svelte.js";
 
 	const formatRating = (rating) => (!rating || rating === 0 ? "N/A" : Number(rating).toFixed(1));
 
@@ -38,7 +40,13 @@
 	let trailerReviews = $state([]);
 	let trailerKey = $state("");
 
+	let user = $derived(getCurrentUser());
+ 
 	async function toggleBookmark() {
+		if (!user) {
+			toast.error("Please login to bookmark");
+			return;
+		}
 		try {
 			const result = await toggleSeriesBookmark({
 				tmdb_id: tmdb_id || id,
@@ -79,10 +87,6 @@
 		}
 	);
 
-	let user = $state();
-	onMount(async () => {
-		user = getCurrentUser();
-	});
 
 
 </script>
@@ -96,11 +100,11 @@
 		setBgImage(`https://image.tmdb.org/t/p/original${poster_path}`);
 	}}
 	onmouseleave={() => {
-		removeBgImage();
+		// Keep last image
 	}}
 >
 	<div
-		class="relative overflow-hidden rounded-2xl bg-gray-900/80 backdrop-blur-md border border-gray-800 shadow-lg transition-transform duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-purple-500/40"
+		class="relative h-full flex flex-col overflow-hidden rounded-2xl bg-gray-900/80 backdrop-blur-md border border-gray-800 shadow-lg transition-transform duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-purple-500/40"
 	>
 		<button
 			onclick={toggleBookmark}
@@ -114,8 +118,8 @@
 			{/if}
 		</button>
 
-		<a href="/series/{tmdb_id}" class="block">
-			<div class="relative aspect-[2/3] w-full overflow-hidden">
+		<a href="/series/{tmdb_id}" class="flex flex-col h-full">
+			<div class="relative aspect-[2/3] w-full overflow-hidden flex-shrink-0">
 				<img
 					src={poster_path
 						? `https://image.tmdb.org/t/p/w500/${poster_path}`
@@ -166,23 +170,35 @@
 		</a>
 
 		<!-- Content -->
-		<div class="p-4 space-y-2">
-			<h3
-				class="text-white font-semibold text-lg leading-tight line-clamp-2 group-hover:text-purple-400 transition"
-			>
-				{name}
-			</h3>
-
-			<div class="flex items-center justify-between text-xs text-gray-400">
-				{#if year}
-					<span>{year}</span>
+		<div class="p-3 sm:p-4 flex flex-col flex-1 justify-between gap-2 sm:gap-3 text-white">
+			<div class="space-y-2 sm:space-y-3">
+				<h3
+					class="font-semibold text-base sm:text-lg leading-tight line-clamp-2 min-h-[2.5rem] group-hover:text-purple-400 transition"
+				>
+					{name}
+				</h3>
+				{#if genre_ids.length > 0}
+					<div class="flex flex-wrap gap-1 mt-1 font-normal">
+						{#each genre_ids.slice(0, 3) as gid}
+							{#if getGenreName(gid, 'tv')}
+								<span class="px-2 py-0.5 bg-gray-800 border border-gray-700 rounded-full text-[10px] text-gray-400">
+									{getGenreName(gid, 'tv')}
+								</span>
+							{/if}
+						{/each}
+					</div>
 				{/if}
-				<span>Series</span>
+				<div class="flex items-center justify-between text-xs text-gray-400 font-normal">
+					{#if year}
+						<span>{year}</span>
+					{/if}
+					<span>Series</span>
+				</div>
 			</div>
-
+ 
 			<button
 				type="button"
-				class="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2 rounded-xl shadow-md transition"
+				class="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs sm:text-sm font-semibold py-1.5 sm:py-2 px-3 sm:px-4 rounded-xl shadow-md transition"
 				onclick={() => (showTrailer = true)}
 			>
 				Watch Trailer

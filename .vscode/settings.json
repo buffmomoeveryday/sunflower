@@ -1,5 +1,9 @@
 {
       "[svelte]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
-      }
+      },
+      "cSpell.words": [
+        "gravitar",
+        "tmdb"
+      ]
 }

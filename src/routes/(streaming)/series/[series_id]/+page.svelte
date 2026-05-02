@@ -1,10 +1,16 @@
 <script>
 	import { toggleSeriesBookmark, addToSeriesHistory } from "$lib/remote/bookmarks.remote.js";
-	import { isSeriesBookmarkedLocal, addBookmarkLocal, removeBookmarkLocal } from "$lib/state/bookmarks.svelte.js";
+	import {
+		isSeriesBookmarkedLocal,
+		addBookmarkLocal,
+		removeBookmarkLocal
+	} from "$lib/state/bookmarks.svelte.js";
 	import { onMount } from "svelte";
 
 	import { toast } from "svelte-sonner";
 
+	import { page } from "$app/stores";
+	import { goto } from "$app/navigation";
 	import { PersistedState } from "runed";
 	import { getEpisodes } from "$lib/remote/series.remote";
 	import {
@@ -27,9 +33,44 @@
 	let seriesDetailData = data.seriesDetailData;
 	let user = data?.user;
 
-	const selectedSource = new PersistedState(`selected_source_${seriesDetailData.id}`, 0);
-	const selectedSeason = new PersistedState(`selected_season_${seriesDetailData.id}`, 1);
-	const selectedEpisode = new PersistedState(`selected_episodes_${seriesDetailData.id}`, 1);
+	let selectedSource = $state(0);
+	let selectedSeason = $state(1);
+	let selectedEpisode = $state(1);
+
+	let isInitialLoad = $state(true);
+
+	$effect(() => {
+		const s = parseInt($page.url.searchParams.get("season") || "");
+		const e = parseInt($page.url.searchParams.get("episode") || "");
+		const sv = parseInt($page.url.searchParams.get("server_id") || "");
+
+		if (isInitialLoad) {
+			if (!isNaN(s) && s !== selectedSeason) {
+				selectedSeason = s;
+				fetchEpisodes(s);
+			}
+			if (!isNaN(e) && e !== selectedEpisode) {
+				selectedEpisode = e;
+			}
+			if (!isNaN(sv) && sv - 1 !== selectedSource) {
+				selectedSource = Math.max(0, sv - 1);
+			}
+			isInitialLoad = false;
+		} else {
+			// Sync state to URL if URL doesn't match
+			if (
+				s !== selectedSeason ||
+				e !== selectedEpisode ||
+				sv - 1 !== selectedSource
+			) {
+				const url = new URL($page.url);
+				url.searchParams.set("season", selectedSeason.toString());
+				url.searchParams.set("episode", selectedEpisode.toString());
+				url.searchParams.set("server_id", (selectedSource + 1).toString());
+				goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+			}
+		}
+	});
 
 	let episodes = $state([]);
 	let isBookmarked = $derived(isSeriesBookmarkedLocal(seriesDetailData.id));
@@ -37,69 +78,57 @@
 	let isSidebarVisible = $state(false);
 	let isPlayerLoading = $state(true);
 
-	const STORAGE_KEY = `series_${seriesDetailData.id}_progress`;
-	const HOME_STORAGE_KEY = "homepage_series";
-	const SERIES_ADDED_KEY = `series_${seriesDetailData.id}_added`;
 
 	let iframeSources = $derived([
-		`https://vidsrc.icu/embed/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
-		`https://embed.su/embed/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
-		`https://player.autoembed.cc/embed/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
-		`https://111movies.com/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
-		`https://vidjoy.pro/embed/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
-		`https://embed.rgshows.me/api/2/tv/?id=${seriesDetailData.id}&s=${selectedSeason.current}&e=${selectedEpisode.current}`,
-		`https://embed.rgshows.me/api/3/tv/?id=${seriesDetailData.id}&s=${selectedSeason.current}&e=${selectedEpisode.current}`,
-		`https://player.videasy.net/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`,
-		`https://mappletv.uk/watch/tv/${seriesDetailData.id}-${selectedSeason.current}-${selectedEpisode.current}`,
-		`https://vidfast.pro/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}?autoPlay=true`,
-		`https://vidlink.pro/tv/${seriesDetailData.id}/${selectedSeason.current}/${selectedEpisode.current}`
+		`https://vidsrc.icu/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
+		`https://embed.su/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
+		`https://player.autoembed.cc/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
+		`https://111movies.com/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
+		`https://vidjoy.pro/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
+		`https://embed.rgshows.me/api/2/tv/?id=${seriesDetailData.id}&s=${selectedSeason}&e=${selectedEpisode}`,
+		`https://embed.rgshows.me/api/3/tv/?id=${seriesDetailData.id}&s=${selectedSeason}&e=${selectedEpisode}`,
+		`https://player.videasy.net/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
+		`https://mappletv.uk/watch/tv/${seriesDetailData.id}-${selectedSeason}-${selectedEpisode}`,
+		`https://vidfast.pro/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}?autoPlay=true`,
+		`https://vidlink.pro/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`
 	]);
 
 	let isNextEpisodeAvailable = $derived(() => {
-		const currentEpisodeIndex = selectedEpisode.current - 1;
+		const currentEpisodeIndex = selectedEpisode - 1;
 		if (currentEpisodeIndex + 1 < episodes.length) {
 			const nextEpisode = episodes[currentEpisodeIndex + 1];
 			return new Date(nextEpisode.air_date) <= new Date();
 		} else {
-			return selectedSeason.current < seriesDetailData.seasons.length;
+			return selectedSeason < seriesDetailData.seasons.length;
 		}
 	});
 
 	let isDisabled = $derived.by(() => {
 		!isNextEpisodeAvailable ||
-			(selectedSeason.current >= seriesDetailData.seasons.length &&
-				selectedEpisode.current >= episodes.length);
+			(selectedSeason >= seriesDetailData.seasons.length &&
+				selectedEpisode >= episodes.length);
 	});
 
 	async function updateProgressInDatabase() {
-		if (!isBookmarked) return;
 		if (!user) return;
 		try {
-			const response = await fetch("/api/series/watchlist/save", {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					user_id: data.user.id,
-					tmdb_id: seriesDetailData.id,
-					season_id: selectedSeason.current,
-					episode_id: selectedEpisode.current,
-					title: seriesDetailData.name,
-					poster_path: seriesDetailData.poster_path,
-					average_ratings: seriesDetailData.vote_average
-				})
+			await addToSeriesHistory({
+				tmdb_id: seriesDetailData.id,
+				poster_path: seriesDetailData.poster_path,
+				name: seriesDetailData.name,
+				vote_average: seriesDetailData.vote_average,
+				first_air_date: seriesDetailData.first_air_date,
+				number_of_seasons: seriesDetailData.number_of_seasons,
+				season_id: selectedSeason,
+				episode_id: selectedEpisode
 			});
-			if (!response.ok) {
-				const result = await response.json();
-				throw new Error(result.message || "Failed to update progress");
-			}
 		} catch (error) {
 			console.error("Error updating progress:", error);
-			toast.error("Failed to save progress");
 		}
 	}
 
 	async function fetchEpisodes(seasonNumber) {
-		selectEpisode.current = seasonNumber;
+		selectedSeason = seasonNumber;
 		let result = await getEpisodes({
 			tvId: seriesDetailData.id.toString(),
 			seasonNumber: seasonNumber.toString()
@@ -108,7 +137,7 @@
 	}
 
 	async function selectEpisode(episodeId) {
-		selectedEpisode.current = episodeId;
+		selectedEpisode = episodeId;
 		isPlayerLoading = true;
 		await updateProgressInDatabase();
 	}
@@ -124,20 +153,9 @@
 		);
 	}
 
-	function loadProgressAndSelectedSource() {
-		const progress = localStorage.getItem(STORAGE_KEY);
-		if (progress) {
-			const { season, episode, source } = JSON.parse(progress);
-			selectedSeason.current = season;
-			selectedEpisode.current = episode;
-			selectedSource.current = source || 1;
-		}
-	}
-
 	function changeSource(index) {
-		selectedSource.current = index;
+		selectedSource = index;
 		isPlayerLoading = true;
-		saveProgressAndSelectedSource();
 	}
 
 	function handleIframeLoad() {
@@ -147,25 +165,25 @@
 	async function getProgress() {}
 
 	function previousEpisode() {
-		if (selectedEpisode.current > 1) {
-			selectEpisode(selectedEpisode.current - 1);
-		} else if (selectedSeason.current > 1) {
-			selectedSeason.current--;
-			fetchEpisodes(selectedSeason.current).then(() => {
+		if (selectedEpisode > 1) {
+			selectEpisode(selectedEpisode - 1);
+		} else if (selectedSeason > 1) {
+			selectedSeason--;
+			fetchEpisodes(selectedSeason).then(() => {
 				selectEpisode(episodes.length);
 			});
 		}
 	}
 
 	function nextEpisode() {
-		if (selectedEpisode.current < episodes.length) {
-			const nextEpisodeData = episodes[selectedEpisode.current]; // selectedEpisode is 1-based
+		if (selectedEpisode < episodes.length) {
+			const nextEpisodeData = episodes[selectedEpisode]; // selectedEpisode is 1-based
 			if (new Date(nextEpisodeData.air_date) <= new Date()) {
-				selectEpisode(selectedEpisode.current + 1);
+				selectEpisode(selectedEpisode + 1);
 			}
-		} else if (selectedSeason.current < seriesDetailData.seasons.length) {
-			selectedSeason.current++;
-			fetchEpisodes(selectedSeason.current).then(() => {
+		} else if (selectedSeason < seriesDetailData.seasons.length) {
+			selectedSeason++;
+			fetchEpisodes(selectedSeason).then(() => {
 				if (episodes.length > 0 && new Date(episodes[0].air_date) <= new Date()) {
 					selectEpisode(1);
 				}
@@ -178,6 +196,10 @@
 	}
 
 	async function toggleBookmark() {
+		if (!user) {
+			toast.error("Please login to bookmark");
+			return;
+		}
 		try {
 			const result = await toggleSeriesBookmark({
 				tmdb_id: seriesDetailData.id,
@@ -189,11 +211,11 @@
 			});
 
 			if (result.success) {
-				if (result.action === 'added') {
-					addBookmarkLocal('series', seriesDetailData.id);
+				if (result.action === "added") {
+					addBookmarkLocal("series", seriesDetailData.id);
 					toast.success("Added to bookmark");
 				} else {
-					removeBookmarkLocal('series', seriesDetailData.id);
+					removeBookmarkLocal("series", seriesDetailData.id);
 					toast.success("Removed from bookmark");
 				}
 			} else {
@@ -202,27 +224,29 @@
 		} catch (e) {
 			console.error("Bookmark error:", e);
 		}
-	}	onMount(async () => {
-		await fetchEpisodes(selectedSeason.current);
+	}
+	onMount(async () => {
+		await fetchEpisodes(selectedSeason);
 
 		await getProgress();
-		
-		setTimeout(async () => {
-			try {
-				await addToSeriesHistory({
-					tmdb_id: seriesDetailData.id,
-					poster_path: seriesDetailData.poster_path,
-					name: seriesDetailData.name,
-					vote_average: seriesDetailData.vote_average,
-					first_air_date: seriesDetailData.first_air_date,
-					number_of_seasons: seriesDetailData.number_of_seasons
-				});
-			} catch (error) {
-				console.error("Error adding to watch history:", error);
-			}
-		}, 5000);
-	});
 
+		if (user) {
+			setTimeout(async () => {
+				try {
+					await addToSeriesHistory({
+						tmdb_id: seriesDetailData.id,
+						poster_path: seriesDetailData.poster_path,
+						name: seriesDetailData.name,
+						vote_average: seriesDetailData.vote_average,
+						first_air_date: seriesDetailData.first_air_date,
+						number_of_seasons: seriesDetailData.number_of_seasons
+					});
+				} catch (error) {
+					console.error("Error adding to watch history:", error);
+				}
+			}, 5000);
+		}
+	});
 </script>
 
 <svelte:window
@@ -308,8 +332,8 @@
 							Seasons
 						</h3>
 						<select
-							bind:value={selectedSeason.current}
-							onchange={() => fetchEpisodes(selectedSeason.current)}
+							bind:value={selectedSeason}
+							onchange={() => fetchEpisodes(selectedSeason)}
 							class="w-full p-3 text-white bg-gray-800 border border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
 						>
 							{#each seriesDetailData.seasons as season}
@@ -336,7 +360,7 @@
 									<button
 										onclick={() => selectEpisode(index + 1)}
 										class={`w-full p-2 sm:p-3 text-left transition-all duration-200 rounded-lg border flex items-start gap-2 sm:gap-4 ${
-											selectedEpisode.current === index + 1
+											selectedEpisode === index + 1
 												? "bg-white text-black border-white"
 												: new Date(episode.air_date) > new Date()
 													? "bg-gray-900 text-gray-500 border-gray-700 cursor-not-allowed"
@@ -392,13 +416,13 @@
 						{seriesDetailData.name}
 					</h2>
 					<div class="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-400">
-						<span>S{selectedSeason.current}</span>
+						<span>S{selectedSeason}</span>
 						<span>•</span>
-						<span>E{selectedEpisode.current}</span>
-						{#if episodes[selectedEpisode.current - 1]}
+						<span>E{selectedEpisode}</span>
+						{#if episodes[selectedEpisode - 1]}
 							<span class="hidden sm:inline">•</span>
 							<span class="hidden sm:inline truncate max-w-40 lg:max-w-none">
-								{episodes[selectedEpisode.current - 1].name}
+								{episodes[selectedEpisode - 1].name}
 							</span>
 						{/if}
 					</div>
@@ -426,7 +450,7 @@
 
 						<!-- Video Player -->
 						<iframe
-							src={iframeSources[selectedSource.current]}
+							src={iframeSources[selectedSource]}
 							class="w-full h-full border-2 border-gray-700 rounded-lg shadow-lg"
 							allowfullscreen
 							loading="lazy"
@@ -446,7 +470,7 @@
 					<div class="flex items-center justify-center sm:justify-start gap-2">
 						<button
 							onclick={previousEpisode}
-							disabled={selectedSeason.current === 1 && selectedEpisode.current === 1}
+							disabled={selectedSeason === 1 && selectedEpisode === 1}
 							class="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-gray-200 rounded-lg shadow hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
 						>
 							<ChevronLeft size={14} class="sm:w-4 sm:h-4" />
@@ -477,7 +501,7 @@
 							{#each iframeSources as source, index}
 								<button
 									class={`px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors min-w-[32px] ${
-										index === selectedSource.current
+										index === selectedSource
 											? "bg-white text-black"
 											: "bg-gray-700 text-white hover:bg-gray-600"
 									}`}
@@ -556,17 +580,17 @@
 				</div>
 
 				<!-- Current Episode Details -->
-				{#if episodes[selectedEpisode.current - 1]}
+				{#if episodes[selectedEpisode - 1]}
 					<div class="p-4 sm:p-6 bg-gray-900 rounded-lg">
 						<h3 class="flex items-center gap-2 mb-3 sm:mb-4 text-lg sm:text-xl font-bold">
 							<Play size={18} class="sm:w-5 sm:h-5" />
 							Current Episode
 						</h3>
 						<h4 class="text-base sm:text-lg font-semibold mb-2">
-							{episodes[selectedEpisode.current - 1].name}
+							{episodes[selectedEpisode - 1].name}
 						</h4>
 						<p class="text-gray-300 mb-3 sm:mb-4 leading-relaxed text-sm sm:text-base">
-							{episodes[selectedEpisode.current - 1].overview}
+							{episodes[selectedEpisode - 1].overview}
 						</p>
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<div>
@@ -577,7 +601,7 @@
 									Air Date
 								</h4>
 								<p class="text-white text-sm sm:text-base">
-									{episodes[selectedEpisode.current - 1].air_date}
+									{episodes[selectedEpisode - 1].air_date}
 								</p>
 							</div>
 							<div>
@@ -590,7 +614,7 @@
 								<div class="flex items-center gap-2">
 									<Star size={14} class="sm:w-4 sm:h-4 text-yellow-500" fill="currentColor" />
 									<span class="text-white font-medium text-sm sm:text-base">
-										{episodes[selectedEpisode.current - 1].vote_average.toFixed(1)}
+										{episodes[selectedEpisode - 1].vote_average.toFixed(1)}
 									</span>
 									<span class="text-gray-400 text-sm">/ 10</span>
 								</div>

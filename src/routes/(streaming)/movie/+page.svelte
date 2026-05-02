@@ -3,8 +3,7 @@
 	import { fade } from "svelte/transition";
 	import { onMount } from "svelte";
 	import MovieCard from "$lib/components/card/MovieCard.svelte";
-	import SeriesCard from "$lib/components/card/SeriesCard.svelte";
-	import Navbar from "$lib/components/Navbar.svelte";
+	import { getBookmarkedMovies } from "$lib/remote/bookmarks.remote.js";
 
 	let { data } = $props();
 
@@ -14,34 +13,12 @@
 	let mySeriesWatchlist = $state([]);
 	let myMoiveWatchlist = $state([]);
 
-	async function loadMovieWatchlist(user_id) {
+	async function loadMovieWatchlist() {
 		try {
-			const response = await fetch(`/api/movie/watchlist/list`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json"
-				},
-				body: JSON.stringify({ user_id: user.id })
-			});
-
-			if (!response.ok) {
-				throw new Error(`Failed to load movie watchlist: ${response.statusText}`);
-			}
-			const data = await response.json();
-			const sortedMovies = data.records.items.sort(
-				(a, b) => new Date(b.created) - new Date(a.created)
-			);
-			myMoiveWatchlist = sortedMovies;
-			localStorage.setItem("homepage_movies", JSON.stringify(sortedMovies));
+			myMoiveWatchlist = await getBookmarkedMovies();
 		} catch (error) {
 			console.error("Error loading movie watchlist:", error);
-			try {
-				const storedMovies = JSON.parse(localStorage.getItem("homepage_movies") || "[]");
-				myMoiveWatchlist = storedMovies.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
-			} catch (localError) {
-				console.error("Error loading movies from local storage:", localError);
-				myMoiveWatchlist = [];
-			}
+			myMoiveWatchlist = [];
 		}
 	}
 
@@ -54,18 +31,20 @@
 
 {#snippet layout(movies, titleName)}
 	<section class="container p-4 mx-auto mt-8 rounded-lg">
-		{#if movies.results}
+		{#if movies && movies.results}
 			<section class="container p-4 mx-auto mt-6 rounded-lg">
 				<div class="flex items-center justify-between">
 					<h2 class="text-xl font-bold md:text-2xl">{titleName}</h2>
-					<span class="text-sm text-gray-400">{movies.results.length} items</span>
+					<span class="text-sm text-gray-400">{movies.results?.length || 0} items</span>
 				</div>
-				<div class="mt-4 overflow-x-auto scrollbar-hide">
+				<div class="mt-4 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-4">
 					<div
-						class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+						class="flex sm:grid flex-nowrap sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
 					>
 						{#each movies.results as m}
-							<MovieCard {...m} />
+							<div class="flex-none w-[170px] sm:w-auto">
+								<MovieCard {...m} />
+							</div>
 						{/each}
 					</div>
 				</div>

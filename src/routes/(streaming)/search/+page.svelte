@@ -5,8 +5,10 @@
 
 	import { search as searchRemote } from "$lib/remote/search.remote";
 	import { discover as discoverRemote } from "$lib/remote/discover.remote";
+	import { searchSemantic } from "$lib/remote/semantic.remote";
 	import MovieCard from "$lib/components/card/MovieCard.svelte";
 	import SeriesCard from "$lib/components/card/SeriesCard.svelte";
+	import { Sparkles } from "lucide-svelte";
 
 	let { data } = $props();
 	const { movieGenres, tvGenres } = data.genres;
@@ -25,6 +27,9 @@
 	let yearTo = $state("");
 	let showFilters = $state(false);
 	let debounceTimer = $state();
+
+	let semanticSearch = $state("");
+	let isSemanticMode = $state(false);
 
 	const currentYear = new Date().getFullYear();
 	const years = Array.from({ length: 50 }, (_, i) => currentYear - i);
@@ -65,9 +70,9 @@
 
 						const matchesGenres =
 							selectedGenres.length === 0 ||
-							(item.genre_ids && selectedGenres.every(id => item.genre_ids.includes(Number(id))));
+							(item.genre_ids && selectedGenres.every((id) => item.genre_ids.includes(Number(id))));
 
-						const itemYear = (item.release_date || item.first_air_date || "").split('-')[0];
+						const itemYear = (item.release_date || item.first_air_date || "").split("-")[0];
 						const matchesYearFrom = !yearFrom || (itemYear && Number(itemYear) >= Number(yearFrom));
 						const matchesYearTo = !yearTo || (itemYear && Number(itemYear) <= Number(yearTo));
 
@@ -78,12 +83,12 @@
 			} else if (selectedGenres.length > 0 || yearFrom || yearTo || filter !== "all") {
 				// Browse / Discover mode
 				const type = filter === "tv" ? "tv" : "movies";
-				search_results = await discoverRemote({ 
-					type, 
-					genreIds: selectedGenres, 
-					yearFrom: yearFrom, 
-					yearTo: yearTo, 
-					page 
+				search_results = await discoverRemote({
+					type,
+					genreIds: selectedGenres,
+					yearFrom: yearFrom,
+					yearTo: yearTo,
+					page
 				});
 				if (search_results.success) {
 					results = search_results.searchResults;
@@ -109,10 +114,35 @@
 	};
 
 	const handleInput = () => {
+		if (isSemanticMode) return;
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
 			searchMovie(1);
 		}, 500);
+	};
+
+	const handleSemanticSearch = async () => {
+		if (!semanticSearch.trim()) return;
+		errorMessage = "";
+		loading = true;
+		hasSearched = true;
+		results = [];
+
+		try {
+			const res = await searchSemantic(semanticSearch);
+			if (res.success) {
+				results = res.searchResults;
+				totalPages = 1;
+				currentPage = 1;
+			} else {
+				errorMessage = res.error || "Failed to fetch semantic results";
+			}
+		} catch (err) {
+			errorMessage = "An unexpected error occurred during semantic search.";
+			console.error(err);
+		} finally {
+			loading = false;
+		}
 	};
 
 	const changePage = (newPage) => {
@@ -128,7 +158,7 @@
 
 	const toggleGenre = (genreId) => {
 		if (selectedGenres.includes(genreId)) {
-			selectedGenres = selectedGenres.filter(id => id !== genreId);
+			selectedGenres = selectedGenres.filter((id) => id !== genreId);
 		} else {
 			selectedGenres = [...selectedGenres, genreId];
 		}
@@ -147,56 +177,117 @@
 <div class="max-w-6xl mx-auto px-4 py-8">
 	<!-- Hero / Search Section -->
 	<div class="mb-10 text-center">
-		<h1 class="text-4xl md:text-5xl font-black mb-4 bg-gradient-to-r from-pink-500 to-violet-500 bg-clip-text text-transparent">
-			Find Your Next Favorite
-		</h1>
+		<h1 class="text-4xl md:text-5xl font-black mb-4 text-white">Find Your Next Favorite</h1>
 		<p class="text-gray-400 max-w-2xl mx-auto mb-8">
-			Search through thousands of movies and TV shows with advanced filters.
+			Search through thousands of movies and TV shows.
 		</p>
 
+		<div class="flex justify-center gap-4 mb-6">
+			<button
+				onclick={() => {
+					isSemanticMode = false;
+					hasSearched = false;
+					results = [];
+				}}
+				class="px-6 py-2 rounded-full text-sm font-bold transition-all {!isSemanticMode
+					? 'bg-white text-black shadow-lg'
+					: 'bg-gray-900 border border-gray-800 text-gray-500 hover:text-white'}"
+			>
+				Standard
+			</button>
+			<button
+				onclick={() => {
+					isSemanticMode = true;
+					hasSearched = false;
+					results = [];
+				}}
+				class="flex items-center gap-2 px-6 py-2 rounded-full text-sm font-bold transition-all {isSemanticMode
+					? 'bg-pink-600 text-white shadow-lg shadow-pink-500/20'
+					: 'bg-gray-900 border border-gray-800 text-gray-500 hover:text-white'}"
+			>
+				<Sparkles class="w-4 h-4" />
+				Semantic AI
+			</button>
+		</div>
+
 		<div class="relative max-w-3xl mx-auto">
-			<div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-				<Search class="w-6 h-6 text-gray-500" />
-			</div>
-			<input
-				type="text"
-				bind:value={search}
-				oninput={handleInput}
-				placeholder="Search movies & TV shows..."
-				class="w-full pl-12 pr-12 py-4 rounded-2xl bg-gray-900/50 backdrop-blur-md border border-gray-800 text-white text-lg focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20 transition-all outline-none shadow-xl"
-			/>
-			{#if search}
-				<button 
-					onclick={() => { search = ''; handleInput(); }}
-					class="absolute inset-y-0 right-14 flex items-center text-gray-400 hover:text-white"
+			{#if !isSemanticMode}
+				<div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+					<Search class="w-6 h-6 text-gray-500" />
+				</div>
+				<input
+					type="text"
+					bind:value={search}
+					oninput={handleInput}
+					placeholder="Search movies & TV shows..."
+					class="w-full pl-12 pr-12 py-4 rounded-2xl bg-gray-900/50 backdrop-blur-md border border-gray-800 text-white text-lg focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20 transition-all outline-none shadow-xl"
+				/>
+				{#if search}
+					<button
+						onclick={() => {
+							search = "";
+							handleInput();
+						}}
+						class="absolute inset-y-0 right-14 flex items-center text-gray-400 hover:text-white"
+					>
+						<X class="w-5 h-5" />
+					</button>
+				{/if}
+				<button
+					onclick={() => (showFilters = !showFilters)}
+					class="absolute inset-y-0 right-4 flex items-center {showFilters
+						? 'text-pink-500'
+						: 'text-gray-400'} hover:text-white"
 				>
-					<X class="w-5 h-5" />
+					<Filter class="w-6 h-6" />
+				</button>
+			{:else}
+				<div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+					<Sparkles class="w-6 h-6 text-pink-500" />
+				</div>
+				<input
+					type="text"
+					bind:value={semanticSearch}
+					onkeydown={(e) => e.key === "Enter" && handleSemanticSearch()}
+					placeholder="Describe your movie or series (e.g. 'time travel crime drama')..."
+					class="w-full pl-12 pr-28 py-4 rounded-2xl bg-gray-900/50 backdrop-blur-md border border-pink-500/30 text-white text-lg focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 transition-all outline-none shadow-xl shadow-pink-500/10"
+				/>
+				<button
+					onclick={handleSemanticSearch}
+					class="absolute right-3 inset-y-2 px-6 rounded-xl bg-pink-600 text-white text-sm font-bold hover:bg-pink-700 transition-all active:scale-95"
+				>
+					AI Search
 				</button>
 			{/if}
-			<button 
-				onclick={() => showFilters = !showFilters}
-				class="absolute inset-y-0 right-4 flex items-center {showFilters ? 'text-pink-500' : 'text-gray-400'} hover:text-white"
-			>
-				<Filter class="w-6 h-6" />
-			</button>
 		</div>
 	</div>
 
 	<!-- Expandable Filters Panel -->
 	{#if showFilters}
-		<div class="bg-gray-900/50 backdrop-blur-md border border-gray-800 rounded-2xl p-6 mb-8 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300">
+		<div
+			class="bg-gray-900/50 backdrop-blur-md border border-gray-800 rounded-2xl p-6 mb-8 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300"
+		>
 			<div class="flex flex-col gap-8">
 				<div class="flex flex-col md:flex-row gap-8">
 					<!-- Type Filter -->
 					<div class="flex-1">
-						<span class="block text-xs font-black uppercase tracking-widest text-gray-500 mb-3">Media Type</span>
+						<span class="block text-xs font-black uppercase tracking-widest text-gray-500 mb-3"
+							>Media Type</span
+						>
 						<div class="flex gap-2">
-							{#each ['all', 'movies', 'tv'] as t}
+							{#each ["all", "movies", "tv"] as t}
 								<button
-									onclick={() => { filter = t; selectedGenres = []; handleFilterChange(); }}
-									class="flex-1 py-1.5 px-4 rounded-xl text-xs font-bold capitalize transition-all {filter === t ? 'bg-pink-600 text-white shadow-lg shadow-pink-500/20' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}"
+									onclick={() => {
+										filter = t;
+										selectedGenres = [];
+										handleFilterChange();
+									}}
+									class="flex-1 py-1.5 px-4 rounded-xl text-xs font-bold capitalize transition-all {filter ===
+									t
+										? 'bg-white-600  shadow-lg shadow-pink-500/20'
+										: 'bg-gray-800 text-gray-400 hover:bg-gray-700'}"
 								>
-									{t === 'tv' ? 'TV Shows' : t}
+									{t === "tv" ? "TV Shows" : t}
 								</button>
 							{/each}
 						</div>
@@ -204,7 +295,9 @@
 
 					<!-- Year Range Filter -->
 					<div class="flex-1">
-						<span class="block text-xs font-black uppercase tracking-widest text-gray-500 mb-3">Release Year Range</span>
+						<span class="block text-xs font-black uppercase tracking-widest text-gray-500 mb-3"
+							>Release Year Range</span
+						>
 						<div class="flex items-center gap-2">
 							<select
 								bind:value={yearFrom}
@@ -234,13 +327,19 @@
 				<!-- Genre Multi-Selection -->
 				<div class="flex flex-col">
 					<span class="block text-xs font-black uppercase tracking-widest text-gray-500 mb-3">
-						Genres {#if selectedGenres.length > 0}<span class="text-pink-500 ml-1">({selectedGenres.length})</span>{/if}
+						Genres {#if selectedGenres.length > 0}<span class="text-pink-500 ml-1"
+								>({selectedGenres.length})</span
+							>{/if}
 					</span>
 					<div class="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
 						{#each availableGenres as genre}
 							<button
 								onclick={() => toggleGenre(genre.id)}
-								class="py-1 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border {selectedGenres.includes(genre.id) ? 'bg-pink-600 text-white border-pink-500 shadow-md shadow-pink-500/10' : 'bg-gray-800/50 text-gray-500 border-gray-700 hover:border-gray-600 hover:text-gray-300'}"
+								class="py-1 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border {selectedGenres.includes(
+									genre.id
+								)
+									? 'bg-pink-600 text-white border-pink-500 shadow-md shadow-pink-500/10'
+									: 'bg-gray-800/50 text-gray-500 border-gray-700 hover:border-gray-600 hover:text-gray-300'}"
 							>
 								{genre.name}
 							</button>
@@ -250,7 +349,7 @@
 			</div>
 
 			<div class="mt-6 pt-6 border-t border-gray-800 flex justify-end">
-				<button 
+				<button
 					onclick={clearFilters}
 					class="text-xs font-bold text-gray-500 hover:text-pink-500 transition-colors"
 				>
@@ -263,7 +362,9 @@
 	<!-- Results Section -->
 	{#if loading}
 		<div class="flex flex-col items-center justify-center py-20">
-			<div class="w-12 h-12 border-4 border-pink-500/20 border-t-pink-500 rounded-full animate-spin mb-4"></div>
+			<div
+				class="w-12 h-12 border-4 border-pink-500/20 border-t-pink-500 rounded-full animate-spin mb-4"
+			></div>``
 			<p class="text-gray-500 animate-pulse font-medium">Searching the stars...</p>
 		</div>
 	{:else if errorMessage}
@@ -274,21 +375,27 @@
 		<div id="results-section">
 			<div class="flex items-center justify-between mb-8">
 				<h2 class="text-2xl font-black text-white">
-					{#if search}
+					{#if isSemanticMode}
+						AI Results for "{semanticSearch}"
+					{:else if search}
 						Results for "{search}"
 					{:else}
-						Browsing {filter === 'tv' ? 'TV Shows' : 'Movies'}
+						Browsing {filter === "tv" ? "TV Shows" : "Movies"}
 					{/if}
 				</h2>
-				<span class="text-sm text-gray-500 font-bold uppercase tracking-widest bg-gray-900/50 px-4 py-1 rounded-full border border-gray-800">
-					Page {currentPage} of {Math.min(totalPages, 500)}
-				</span>
+				{#if !isSemanticMode}
+					<span
+						class="text-sm text-gray-500 font-bold uppercase tracking-widest bg-gray-900/50 px-4 py-1 rounded-full border border-gray-800"
+					>
+						Page {currentPage} of {Math.min(totalPages, 500)}
+					</span>
+				{/if}
 			</div>
 
-			<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+			<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
 				{#each results as item (item.id)}
 					<div class="animate-in fade-in zoom-in-95 duration-300">
-						{#if item.media_type === "tv" || filter === 'tv'}
+						{#if item.media_type === "tv" || filter === "tv"}
 							<SeriesCard
 								tmdb_id={item.id}
 								poster_path={item.poster_path}
@@ -296,6 +403,7 @@
 								vote_average={item.vote_average}
 								first_air_date={item.first_air_date}
 								number_of_seasons={item.number_of_seasons}
+								genre_ids={item.genre_ids}
 							/>
 						{:else}
 							<MovieCard {...item} />
@@ -344,12 +452,16 @@
 		</div>
 	{:else if hasSearched}
 		<div class="flex flex-col items-center justify-center py-32 text-center">
-			<div class="bg-gray-900/50 p-8 rounded-3xl border border-gray-800 mb-6 group hover:border-pink-500/30 transition-all">
+			<div
+				class="bg-gray-900/50 p-8 rounded-3xl border border-gray-800 mb-6 group hover:border-pink-500/30 transition-all"
+			>
 				<Search class="w-16 h-16 text-gray-700 group-hover:text-pink-500 transition-colors" />
 			</div>
 			<p class="text-2xl font-black text-white mb-2">No results found</p>
-			<p class="text-gray-500 max-w-sm">We couldn't find any matches. Try adjusting your filters or search terms.</p>
-			<button 
+			<p class="text-gray-500 max-w-sm">
+				We couldn't find any matches. Try adjusting your filters or search terms.
+			</p>
+			<button
 				onclick={clearFilters}
 				class="mt-6 px-6 py-2 bg-pink-600 text-white font-bold rounded-xl hover:bg-pink-700 transition-all shadow-lg shadow-pink-500/20"
 			>
@@ -358,7 +470,9 @@
 		</div>
 	{:else}
 		<!-- Initial Landing State -->
-		<div class="flex flex-col items-center justify-center py-20 text-center opacity-50 grayscale pointer-events-none">
+		<div
+			class="flex flex-col items-center justify-center py-20 text-center opacity-50 grayscale pointer-events-none"
+		>
 			<div class="flex gap-4 mb-8">
 				{#each [1, 2, 3] as i}
 					<div class="w-40 h-60 bg-gray-900 rounded-2xl border border-gray-800"></div>
@@ -375,8 +489,12 @@
 	}
 
 	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	.custom-scrollbar::-webkit-scrollbar {

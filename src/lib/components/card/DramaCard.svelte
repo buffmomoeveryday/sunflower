@@ -1,6 +1,8 @@
 <script>
 	import { toggleSeriesBookmark } from "$lib/remote/bookmarks.remote.js";
+	import { getCurrentUser } from "$lib/state/user.svelte.js";
 	import { isSeriesBookmarkedLocal, addBookmarkLocal, removeBookmarkLocal } from "$lib/state/bookmarks.svelte.js";
+	import { setBgImage, removeBgImage } from "$lib/state/bgImage.svelte";
 
 
 	import { Bookmark } from "lucide-svelte";
@@ -42,9 +44,13 @@
 	let seasonsText = getSeasonsText(number_of_seasons);
 
 	let isBookmarked = $derived(isSeriesBookmarkedLocal(id));
-
+	let user = $derived(getCurrentUser());
 
 	async function toggleBookmark() {
+		if (!user) {
+			toast.error("Please login to bookmark");
+			return;
+		}
 		try {
 			const result = await toggleSeriesBookmark({
 				tmdb_id: id,
@@ -75,14 +81,19 @@
 </script>
 
 
-<div class="group relative w-full max-w-sm mx-auto">
+ <!-- svelte-ignore a11y_no_static_element_interactions -->
+ <div 
+ 	class="group relative w-full max-w-sm mx-auto h-full"
+ 	onmouseenter={() => setBgImage(`https://image.tmdb.org/t/p/original${poster_path}`)}
+ 	onmouseleave={() => { /* Persist background */ }}
+ >
 	<!-- Main card container -->
-	<div
-		class="relative overflow-hidden bg-gray-900/80 backdrop-blur-sm rounded-2xl shadow-lg transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-2 border border-gray-800/50"
-	>
-		<a href="/dramas/{id}" class="block text-white no-underline">
-			<!-- Poster container with aspect ratio -->
-			<div class="relative w-full aspect-[2/3] overflow-hidden">
+ 	<div
+ 		class="relative h-full flex flex-col overflow-hidden bg-gray-900/80 backdrop-blur-sm rounded-2xl shadow-lg transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-2 border border-gray-800/50"
+ 	>
+ 		<a href="/dramas/{id}" class="flex flex-col h-full text-white no-underline">
+ 			<!-- Poster container with aspect ratio -->
+ 			<div class="relative w-full aspect-[2/3] overflow-hidden flex-shrink-0">
 				<img
 					src={poster_path
 						? `https://image.tmdb.org/t/p/w500/${poster_path}`
@@ -168,14 +179,15 @@
 				</div>
 			</div>
 
-			<!-- Content section -->
-			<div class="p-4 space-y-2">
-				<!-- Title -->
-				<h3
-					class="text-white font-semibold text-base leading-tight line-clamp-2 group-hover:text-purple-400 transition-colors duration-300"
-				>
-					{name}
-				</h3>
+ 			<!-- Content section -->
+ 			<div class="p-4 flex flex-col flex-1 justify-between gap-3">
+ 				<div class="space-y-2">
+ 					<!-- Title -->
+ 					<h3
+ 						class="text-white font-semibold text-base leading-tight line-clamp-2 min-h-[2.5rem] group-hover:text-purple-400 transition-colors duration-300"
+ 					>
+ 						{name}
+ 					</h3>
 
 				<!-- Series details -->
 				<div class="flex items-center justify-between text-sm text-gray-400">
@@ -193,22 +205,23 @@
 						</span>
 					{/if}
 
-					<!-- TV Series icon -->
-					<span class="flex items-center gap-1">
-						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-							/>
-						</svg>
-						Series
-					</span>
-				</div>
-			</div>
-		</a>
-	</div>
+ 					<!-- TV Series icon -->
+ 					<span class="flex items-center gap-1">
+ 						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ 							<path
+ 								stroke-linecap="round"
+ 								stroke-linejoin="round"
+ 								stroke-width="2"
+ 								d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+ 							/>
+ 						</svg>
+ 						Series
+ 					</span>
+ 				</div>
+ 			</div>
+ 		</div>
+ 		</a>
+ 	</div>
 
 	<!-- Subtle glow effect -->
 	<div

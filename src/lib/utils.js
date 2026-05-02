@@ -1,5 +1,4 @@
-import { env } from '$env/dynamic/private';
-const API = env.API_KEY;
+import { API_KEY as API} from '$env/static/private';
 
 const cache = new Map();
 

@@ -26,7 +26,9 @@ const seriesObject = v.object({
 	name: v.string(),
 	vote_average: v.union([v.string(), v.number()]),
 	first_air_date: v.optional(v.string(), ""),
-	number_of_seasons: v.union([v.string(), v.number()])
+	number_of_seasons: v.union([v.string(), v.number()]),
+	season_id: v.optional(v.union([v.string(), v.number()])),
+	episode_id: v.optional(v.union([v.string(), v.number()]))
 });
 
 const animeObject = v.object({
@@ -105,7 +107,7 @@ export const isMovieBookmarked = command(
 export const addToMovieHistory = command(movieObject, async (movie) => {
 	const event = getRequestEvent();
 	const user = event.locals.user;
-	if (!user) return { success: false };
+	if (!user) return { success: false, error: "Not logged in" };
 	try {
 		const existing = await db
 			.select()
@@ -128,6 +130,10 @@ export const addToMovieHistory = command(movieObject, async (movie) => {
 				releaseDate: movie.release_date,
 				genreIds: JSON.stringify(movie.genre_ids)
 			});
+		} else {
+			await db.update(moviesWatchHistory)
+				.set({ createdAt: new Date() })
+				.where(eq(moviesWatchHistory.id, existing.id));
 		}
 		return { success: true };
 	} catch (err) {
@@ -193,7 +199,7 @@ export const isSeriesBookmarked = command(
 export const addToSeriesHistory = command(seriesObject, async (series) => {
 	const event = getRequestEvent();
 	const user = event.locals.user;
-	if (!user) return { success: false };
+	if (!user) return { success: false, error: "Not logged in" };
 	const tmdbId = series.tmdb_id.toString();
 	try {
 		const existing = await db
@@ -210,8 +216,19 @@ export const addToSeriesHistory = command(seriesObject, async (series) => {
 				name: series.name,
 				voteAverage: series.vote_average.toString(),
 				firstAirDate: series.first_air_date,
-				numberOfSeasons: Number(series.number_of_seasons)
+				numberOfSeasons: Number(series.number_of_seasons),
+				seasonId: series.season_id ? Number(series.season_id) : 1,
+				episodeId: series.episode_id ? Number(series.episode_id) : 1
 			});
+		} else {
+			// Update the existing history record with new progress
+			await db.update(seriesWatchHistory)
+				.set({
+					seasonId: series.season_id ? Number(series.season_id) : existing.seasonId,
+					episodeId: series.episode_id ? Number(series.episode_id) : existing.episodeId,
+					createdAt: new Date() // Update timestamp to bring it to top
+				})
+				.where(eq(seriesWatchHistory.id, existing.id));
 		}
 		return { success: true };
 	} catch (err) {
@@ -298,6 +315,10 @@ export const addToAnimeHistory = command(animeObject, async (anime) => {
 				title: anime.title,
 				episodes: Number(anime.episodes)
 			});
+		} else {
+			await db.update(animesWatchHistory)
+				.set({ createdAt: new Date() })
+				.where(eq(animesWatchHistory.id, existing.id));
 		}
 		return { success: true };
 	} catch (err) {
@@ -391,7 +412,7 @@ export const getMoviesHistory = command(v.any(), async () => {
 			.all();
 		return results.map((m) => ({
 			...m,
-			id: m.id, // Primary key for deletion
+			id: m.id, 
 			tmdb_id: m.tmdbId,
 			poster_path: m.posterPath,
 			title: m.title,
@@ -423,7 +444,9 @@ export const getSeriesHistory = command(v.any(), async () => {
 			poster_path: m.posterPath,
 			vote_average: m.voteAverage,
 			first_air_date: m.firstAirDate,
-			number_of_seasons: m.numberOfSeasons
+			number_of_seasons: m.numberOfSeasons,
+			season_id: m.seasonId,
+			episode_id: m.episodeId
 		}));
 	} catch (err) {
 		return [];

@@ -150,6 +150,8 @@ export const seriesWatchHistory = sqliteTable("series_watch_history", {
 	voteAverage: text("vote_average").notNull(),
 	firstAirDate: text("first_air_date").notNull(),
 	numberOfSeasons: integer("number_of_seasons").notNull(),
+	seasonId: integer("season_id").default(1),
+	episodeId: integer("episode_id").default(1),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .$defaultFn(() => new Date())
     .notNull(),

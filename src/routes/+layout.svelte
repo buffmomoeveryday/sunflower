@@ -9,8 +9,8 @@
 	import { page } from "$app/stores";
 	import { setCurrentUser } from "$lib/state/user.svelte";
 	import { setBookmarks } from "$lib/state/bookmarks.svelte.js";
+	import { setMovieGenres, setTvGenres } from "$lib/state/genres.svelte.js";
 	import { onMount } from "svelte";
-
 
 	let { children, data } = $props();
 	let gravitarUrl = $state(null);
@@ -29,23 +29,53 @@
 				setBookmarks(data.bookmarks);
 			}
 		}
+		if (data.genres) {
+			setMovieGenres(data.genres.movieGenres);
+			setTvGenres(data.genres.tvGenres);
+		}
 	});
 
+	const bgImage = $derived(getBgImage());
+	let activeBgImage = $state(null);
+
+	$effect(() => {
+		if (bgImage) {
+			const current = bgImage;
+			const img = new Image();
+			img.src = current;
+			img.onload = () => {
+				if (bgImage === current) {
+					activeBgImage = current;
+				}
+			};
+		} else {
+			activeBgImage = null;
+		}
+	});
 </script>
 
 <Navbar user={data.user} {gravitarUrl} />
 <Toaster richColors />
-<!-- {#if !["/search", "/bookmarks", "/watch-history", "/series"].includes($page.url.pathname)}
-	{#each [getBgImage()] as bgImage (bgImage)}
-		<div
-			in:fade={{ duration: 600 }}
-			out:fade={{ duration: 600 }}
-			class="absolute inset-0 h-screen w-screen bg-cover bg-center bg-no-repeat opacity-50 z-0"
-			style="background-image: url({bgImage});"
-		></div>
-	{/each}
-{/if} -->
+{#if activeBgImage && !$page.url.pathname.includes("/channels")}
+	<div class="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
+		{#key activeBgImage}
+			<div
+				transition:fade={{ duration: 1200 }}
+				class="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat transition-all duration-1000"
+				style="background-image: url({activeBgImage});"
+			></div>
+		{/key}
+		<div class="absolute inset-0 bg-black/70"></div>
+	</div>
+{/if}
 
-<div class="min-h-screen p-4 text-white bg-black">
+<div class="relative min-h-screen p-4 text-white bg-transparent z-10">
 	{@render children()}
 </div>
+
+<style>
+	:global(body) {
+		background-color: black;
+		margin: 0;
+	}
+</style>

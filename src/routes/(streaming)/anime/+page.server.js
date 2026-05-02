@@ -20,9 +20,10 @@ const fetchAnime = async () => {
         description(asHtml: false)
         averageScore
         popularity
-      startDate {
-        year
-      }
+        startDate {
+          year
+        }
+        genres
       }
     }
   }

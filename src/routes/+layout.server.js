@@ -1,9 +1,11 @@
 import { db } from '$lib/db/db';
 import { moviesBookmark, seriesBookmark, animesBookmark } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { fetchGenres } from '$lib/services/tmdbService';
 
 export async function load({ locals }) {
 	const user = locals.user;
+	const genres = await fetchGenres();
 	let bookmarks = {
 		movies: [],
 		series: [],
@@ -28,7 +30,8 @@ export async function load({ locals }) {
 
 	return {
 		user,
-		bookmarks
+		bookmarks,
+		genres
 	};
 }
 

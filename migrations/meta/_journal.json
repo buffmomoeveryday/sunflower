@@ -29,6 +29,13 @@
       "when": 1767619803845,
       "tag": "0003_unknown_rattler",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1777703425141,
+      "tag": "0004_short_vin_gonzales",
+      "breakpoints": true
     }
   ]
 }

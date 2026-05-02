@@ -1,35 +1,33 @@
 <script>
-	import { LogOut, Menu, Search } from "lucide-svelte";
+	import { LogOut, Menu, Search, Home, Tv, Bookmark, History, Trophy } from "lucide-svelte";
 	import { page } from "$app/stores";
 	import { ProgressBar } from "@prgm/sveltekit-progress-bar";
-	import { enhance } from "$app/forms";
-	import { onMount } from "svelte";
-	import { slide, fade } from "svelte/transition";
+	import { fade, slide } from "svelte/transition";
 	import { authClient } from "$lib/auth/auth-client";
 
-	const { data, user, gravitarUrl } = $props();
+	// Destructure props - Svelte 5 style
+	let { data, user, gravitarUrl } = $props();
 
+	// State runes
 	let dropdownOpen = $state(false);
 	let mobileMenuOpen = $state(false);
 
-	let usr = $derived(user);
-
+	// Derived state
 	const navItems = $derived([
-		{ name: "Home", path: "/", icon: "home" },
-		{ name: "Movies", path: "/movie", icon: "home" },
-		{ name: "Series", path: "/series", icon: "tv" },
-		{ name: "Anime", path: "/anime", icon: "search" },
-		{ name: "Dramas", path: "/dramas", icon: "search" },
-		{ name: "Channels", path: "/channels", icon: "search" },
-		...(usr
+		{ name: "Home", path: "/", icon: Home },
+		{ name: "Movies", path: "/movie", icon: Home },
+		{ name: "Series", path: "/series", icon: Tv },
+		{ name: "Anime", path: "/anime", icon: Search },
+		{ name: "Sports", path: "/sports", icon: Trophy },
+		{ name: "Dramas", path: "/dramas", icon: Search },
+		{ name: "Channels", path: "/channels", icon: Search },
+		...(user
 			? [
-					{ name: "Bookmarks", path: "/bookmarks", icon: "bookmarks" },
-					{ name: "Watch History", path: "/watch-history", icon: "watch history" }
+					{ name: "Watch History", path: "/watch-history", icon: History }
 				]
 			: []),
-		{ name: "Search", path: "/search", icon: "search" }
+		{ name: "Search", path: "/search", icon: Search }
 	]);
-
 
 	function isActive(path) {
 		if (path === "/") {
@@ -38,17 +36,11 @@
 		return $page.url.pathname.startsWith(path);
 	}
 
-	// Close dropdown when clicking outside
+	// Helper functions
 	function handleWindowClick(event) {
-		const dropdown = event.target.closest(".dropdown");
-		if (!dropdown) {
+		if (dropdownOpen && !event.target.closest(".dropdown-container")) {
 			dropdownOpen = false;
 		}
-	}
-
-	function toggleDropdown(event) {
-		event.stopPropagation();
-		dropdownOpen = !dropdownOpen;
 	}
 
 	function toggleMobileMenu(event) {
@@ -56,22 +48,34 @@
 		mobileMenuOpen = !mobileMenuOpen;
 	}
 
-	function closeMobileMenu() {
-		mobileMenuOpen = false;
+	function toggleDropdown(event) {
+		event.stopPropagation();
+		dropdownOpen = !dropdownOpen;
+	}
+
+	async function handleSignOut() {
+		await authClient.signOut();
+		// In Svelte 5, we don't manually reassign derived usr.
+		// We let the authClient/navigation refresh the state.
+		window.location.reload();
 	}
 </script>
 
-<svelte:window on:click={handleWindowClick} />
+<svelte:window onclick={handleWindowClick} />
 
 <nav class="sticky top-0 z-50 w-full border-b border-gray-800 bg-black backdrop-blur-sm">
 	<div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
 		<div class="flex items-center justify-between h-16">
 			<div class="flex items-center space-x-4">
-				<Menu
-					class="block text-gray-300 md:hidden cursor-pointer"
-					on:click={toggleMobileMenu}
-					aria-label="menu toggle"
-				/>
+				<button
+					type="button"
+					onclick={toggleMobileMenu}
+					class="block p-2 text-gray-300 md:hidden hover:bg-gray-900 rounded-md"
+					aria-label="Toggle Menu"
+				>
+					<Menu size={24} />
+				</button>
+
 				<span class="text-xl font-bold text-white">
 					<a href="/"> 🌻Sunflower </a>
 				</span>
@@ -81,16 +85,18 @@
 				{#each navItems as item}
 					<a
 						href={item.path}
-						class={"px-3 py-2 rounded-lg transition " +
-							(isActive(item.path) ? "bg-white text-black" : "text-white hover:text-gray-300")}
+						class={"px-3 py-2 rounded-lg transition-all duration-300 font-medium " +
+							(isActive(item.path) 
+								? "bg-amber-500/20 text-amber-500 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.1)]" 
+								: "text-gray-400 hover:text-white hover:bg-gray-800")}
 					>
 						{item.name}
 					</a>
 				{/each}
 			</div>
 
-			<div class="relative dropdown">
-				{#if usr}
+			<div class="relative dropdown-container">
+				{#if user}
 					<div class="flex items-center gap-3">
 						<button
 							type="button"
@@ -115,11 +121,7 @@
 								<div class="px-4 py-2">
 									<button
 										class="flex items-center w-full gap-2 px-3 py-2 text-sm text-red-400 transition rounded hover:text-red-300 hover:bg-gray-800"
-										onclick={async () => {
-											await authClient.signOut();
-											usr = null;
-											// location.reload();
-										}}
+										onclick={handleSignOut}
 									>
 										<LogOut size={16} />
 										Log out
@@ -140,15 +142,15 @@
 		</div>
 
 		{#if mobileMenuOpen}
-			<div class="flex flex-col mt-4 space-y-2 md:hidden" transition:slide={{ duration: 300 }}>
+			<div class="flex flex-col pb-4 space-y-2 md:hidden" transition:slide={{ duration: 300 }}>
 				{#each navItems as item}
 					<a
 						href={item.path}
-						onclick={closeMobileMenu}
-						class={"block px-4 py-2 rounded-lg transition-all duration-300 ease-in-out " +
+						onclick={() => (mobileMenuOpen = false)}
+						class={"block px-4 py-2 rounded-lg transition-all duration-300 font-medium " +
 							(isActive(item.path)
-								? "bg-white text-black transform scale-105"
-								: "text-white hover:text-gray-300 hover:bg-gray-800")}
+								? "bg-amber-500/20 text-amber-500 border border-amber-500/30"
+								: "text-gray-400 hover:text-white hover:bg-gray-800")}
 					>
 						{item.name}
 					</a>

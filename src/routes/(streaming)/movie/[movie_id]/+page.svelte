@@ -21,7 +21,6 @@
 	let movie_id = data.movieData.id;
 	let recommendation_data = data.recommendation_data;
 
-	const HOME_STORAGE_KEY = "homepage_movies";
 	const safeMovieId = String(movie_id).trim();
 
 	let isSidebarVisible = $state(false);
@@ -44,69 +43,18 @@
 		`https://embed.rgshows.me/api/2/movie/?id=${safeMovieId}`
 	]);
 
-	const selectedSource = new PersistedState(`selected_source_${movie_id}`, 0);
+	let selectedSource = $state(0);
 
 	function changeSource(index) {
-		selectedSource.current = index;
+		selectedSource = index;
 	}
 
-	async function toggleHomeStatus() {
-		if (!user) return;
-		try {
-			const postData = {
-				user_id: user.id,
-				tmdb_id: movie_data.id,
-				title: movie_data.title,
-				poster_path: movie_data.poster_path,
-				average_ratings: movie_data.vote_average
-			};
-
-			const action = isBookmarked ? "remove" : "add";
-			const method = action === "add" ? "POST" : "DELETE";
-
-			const response = await fetch("/api/movie/watchlist/save", {
-				method,
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(
-					action === "add" ? postData : { user_id: user.id, tmdb_id: movie_data.id }
-				)
-			});
-
-			if (!response.ok) {
-				const result = await response.json();
-				throw new Error(result.message || `Failed to ${action} from watchlist`);
-			}
-
-			const storedMovies = JSON.parse(localStorage.getItem(HOME_STORAGE_KEY) || "[]");
-
-			if (action === "add") {
-				const movieToAdd = {
-					id: movie_data.id,
-					name: movie_data.title,
-					poster_path: movie_data.poster_path,
-					first_air_date: movie_data.release_date,
-					vote_average: movie_data.vote_average,
-					addedAt: new Date().toISOString()
-				};
-				if (!storedMovies.some((m) => m.id === movie_data.id)) {
-					storedMovies.push(movieToAdd);
-					localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(storedMovies));
-					toast.success("Added to Bookmark");
-					isBookmarked = true;
-				}
-			} else {
-				const updatedMovies = storedMovies.filter((m) => m.id !== movie_data.id);
-				localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify(updatedMovies));
-				toast.success("Removed from Home");
-				isBookmarked = false;
-			}
-		} catch (error) {
-			console.error(error);
-			toast.error("Action failed. Try again.");
-		}
-	}
 
 	async function toggleBookmark() {
+		if (!user) {
+			toast.error("Please login to bookmark");
+			return;
+		}
 		try {
 			const result = await toggleMovieBookmark({
 				id: movie_data.id,
@@ -114,7 +62,7 @@
 				title: movie_data.title,
 				vote_average: movie_data.vote_average,
 				release_date: movie_data.release_date,
-				genre_ids: movie_data.genre_ids
+				genre_ids: movie_data.genres ? movie_data.genres.map(g => g.id) : []
 			});
 
 			if (result.success) {
@@ -134,21 +82,22 @@
 	}
 
 	onMount(async () => {
-		setTimeout(async () => {
-
-			try {
-				await addToMovieHistory({
-					id: movie_data.id,
-					poster_path: movie_data.poster_path,
-					title: movie_data.title,
-					vote_average: movie_data.vote_average,
-					release_date: movie_data.release_date,
-					genre_ids: movie_data.genre_ids
-				});
-			} catch (error) {
-				console.error("Error adding to watch history:", error);
-			}
-		}, 5000);
+		if (user) {
+			setTimeout(async () => {
+				try {
+					await addToMovieHistory({
+						id: movie_data.id,
+						poster_path: movie_data.poster_path,
+						title: movie_data.title,
+						vote_average: movie_data.vote_average,
+						release_date: movie_data.release_date,
+						genre_ids: movie_data.genres ? movie_data.genres.map(g => g.id) : []
+					});
+				} catch (error) {
+					console.error("Error adding to watch history:", error);
+				}
+			}, 5000);
+		}
 	});
 
 
@@ -307,7 +256,7 @@
 				class="flex-1 relative bg-gray-900 border-2 border-gray-700 rounded-lg shadow-lg overflow-hidden min-h-[180px] sm:min-h-[280px] md:min-h-[400px]"
 			>
 				<iframe
-					src={iframeSources[selectedSource.current]}
+					src={iframeSources[selectedSource]}
 					class="absolute inset-0 w-full h-full"
 					allow="encrypted-media; fullscreen"
 					allowfullscreen
@@ -326,11 +275,11 @@
 							<button
 								onclick={() => changeSource(index)}
 								class={`px-2.5 py-1.5 text-xs font-medium rounded-lg min-w-[32px] text-center transition ${
-									index === selectedSource.current
+									index === selectedSource
 										? "bg-white text-black shadow"
 										: "bg-gray-700 text-white hover:bg-gray-600"
 								}`}
-								aria-pressed={index === selectedSource.current}
+								aria-pressed={index === selectedSource}
 							>
 								{index + 1}
 							</button>

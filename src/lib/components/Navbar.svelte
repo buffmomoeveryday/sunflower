@@ -1,5 +1,15 @@
 <script>
-	import { LogOut, Menu, Search, Home, Tv, Bookmark, History, Trophy } from "lucide-svelte";
+	import {
+		LogOut,
+		Menu,
+		Search,
+		Home,
+		Tv,
+		Bookmark,
+		History,
+		Trophy,
+		BookmarkIcon
+	} from "lucide-svelte";
 	import { page } from "$app/stores";
 	import { ProgressBar } from "@prgm/sveltekit-progress-bar";
 	import { fade, slide } from "svelte/transition";
@@ -21,11 +31,7 @@
 		{ name: "Sports", path: "/sports", icon: Trophy },
 		{ name: "Dramas", path: "/dramas", icon: Search },
 		{ name: "Channels", path: "/channels", icon: Search },
-		...(user
-			? [
-					{ name: "Watch History", path: "/watch-history", icon: History }
-				]
-			: []),
+		...(user ? [{ name: "Bookmarks", path: "/bookmarks", icon: BookmarkIcon }] : []),
 		{ name: "Search", path: "/search", icon: Search }
 	]);
 
@@ -86,8 +92,8 @@
 					<a
 						href={item.path}
 						class={"px-3 py-2 rounded-lg transition-all duration-300 font-medium " +
-							(isActive(item.path) 
-								? "bg-amber-500/20 text-amber-500 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.1)]" 
+							(isActive(item.path)
+								? "bg-amber-500/20 text-amber-500 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.1)]"
 								: "text-gray-400 hover:text-white hover:bg-gray-800")}
 					>
 						{item.name}

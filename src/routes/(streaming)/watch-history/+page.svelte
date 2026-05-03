@@ -65,6 +65,13 @@
 	function handleCardClick(item) {
 		const type = activeTab === "movies" ? "movie" : activeTab === "series" ? "series" : "anime";
 		const id = item.tmdb_id || item.id;
+		if (type === "series" && item.season_id != null && item.episode_id != null) {
+			const sid = item.server_id ?? 1;
+			goto(
+				`/series/${id}?season=${item.season_id}&episode=${item.episode_id}&server_id=${sid}`
+			);
+			return;
+		}
 		goto(`/${type}/${id}`);
 	}
 </script>

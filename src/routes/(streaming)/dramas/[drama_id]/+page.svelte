@@ -3,6 +3,9 @@
 	import { toast } from 'svelte-sonner';
 	import { toggleSeriesBookmark, addToSeriesHistory } from "$lib/remote/bookmarks.remote.js";
 	import { isSeriesBookmarkedLocal, addBookmarkLocal, removeBookmarkLocal } from "$lib/state/bookmarks.svelte.js";
+	import { get } from "svelte/store";
+	import { page } from "$app/stores";
+	import { goto } from "$app/navigation";
 	import { getEpisodes } from "$lib/remote/series.remote";
 	import {
 		Heart,
@@ -21,11 +24,23 @@
 	let seriesDetailData = data.seriesDetailData;
 	let user = data?.user;
 
-	// Reactive state
-	let selectedSource = $state(0);
-	let selectedSeason = $state(1);
+	function readPlaybackQuery(sp) {
+		const s = parseInt(sp.get("season") ?? "", 10);
+		const e = parseInt(sp.get("episode") ?? "", 10);
+		const sv = parseInt(sp.get("server_id") ?? "", 10);
+		return {
+			season: !isNaN(s) && s > 0 ? s : 1,
+			episode: !isNaN(e) && e > 0 ? e : 1,
+			source: !isNaN(sv) && sv > 0 ? Math.max(0, sv - 1) : 0
+		};
+	}
+
+	const initialPb = readPlaybackQuery(get(page).url.searchParams);
+
+	let selectedSource = $state(initialPb.source);
+	let selectedSeason = $state(initialPb.season);
 	let episodes = $state([]);
-	let selectedEpisode = $state(1);
+	let selectedEpisode = $state(initialPb.episode);
 	let isSidebarVisible = $state(false); // Start hidden on mobile
 	let isPlayerLoading = $state(true); // Track loading state
 
@@ -75,7 +90,8 @@
 				first_air_date: seriesDetailData.first_air_date,
 				number_of_seasons: seriesDetailData.number_of_seasons,
 				season_id: selectedSeason,
-				episode_id: selectedEpisode
+				episode_id: selectedEpisode,
+				server_id: selectedSource + 1
 			});
 		} catch (error) {
 			console.error("Error updating progress:", error);
@@ -127,9 +143,15 @@
 		isPlayerLoading = true; // Set loading state when changing episodes
 		await updateProgressInDatabase();
 	}
-	function changeSource(index) {
+	async function changeSource(index) {
 		selectedSource = index;
-		isPlayerLoading = true; // Set loading state when changing sources
+		isPlayerLoading = true;
+		const url = new URL(get(page).url);
+		url.searchParams.set("season", selectedSeason.toString());
+		url.searchParams.set("episode", selectedEpisode.toString());
+		url.searchParams.set("server_id", (index + 1).toString());
+		goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+		await updateProgressInDatabase();
 	}
 	function handleIframeLoad() {
 		isPlayerLoading = false; // Remove loading state when iframe loads
@@ -171,14 +193,14 @@
 		await fetchEpisodes(selectedSeason);
 
 		if (user) {
-			setTimeout(async () => {
-				await updateProgressInDatabase();
-			}, 5000);
+			await updateProgressInDatabase();
 		}
 	});
 </script>
 
-<div class="flex flex-col min-h-screen text-white bg-black">
+<div
+	class="flex flex-col min-h-0 text-white bg-black"
+>
 	<!-- Mobile Header -->
 	<div class="flex items-center justify-between p-4 bg-black border-b border-gray-800 md:hidden">
 		<button
@@ -207,7 +229,7 @@
 			</button>
 		{/if}
 	</div>
-	<div class="flex flex-1 overflow-hidden">
+	<div class="flex flex-1 min-h-0 overflow-hidden">
 		<!-- Sidebar -->
 		<div
 			class={`
@@ -327,12 +349,10 @@
 			</div>
 		</div>
 		<!-- Main Content -->
-		<div class="flex-1 flex flex-col md:w-3/4 lg:w-4/5 min-h-0">
-			<!-- Video Player Section - Full Screen -->
-			<div class="flex-1 flex flex-col p-4 md:p-6 min-h-0">
-				<!-- Title -->
-				<div class="mb-4 flex-shrink-0">
-					<h2 class="text-xl md:text-2xl font-bold text-white mb-2">
+		<div class="flex-1 flex flex-col min-h-0 overflow-y-auto md:w-3/4 lg:w-4/5">
+			<div class="flex flex-col min-h-0 p-4 md:p-6 shrink-0">
+				<div class="mb-3 flex-shrink-0">
+					<h2 class="text-xl md:text-2xl font-bold text-white mb-1">
 						{seriesDetailData.name}
 					</h2>
 					<div class="flex items-center gap-2 text-sm text-gray-400">
@@ -345,35 +365,37 @@
 						{/if}
 					</div>
 				</div>
-				<!-- Video Player Container - Takes up remaining space -->
-				<div class="relative flex-1 mb-4 min-h-0">
-					<!-- Loading Skeleton -->
-					{#if isPlayerLoading}
-						<div class="absolute inset-0 bg-gray-800 rounded-lg flex items-center justify-center">
-							<div class="flex flex-col items-center gap-4">
-								<div
-									class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"
-								></div>
-								<p class="text-gray-400">Loading episode...</p>
-							</div>
-						</div>
-					{/if}
-					<!-- Video Player -->
-					<iframe
-						src={iframeSources[selectedSource]}
-						class="w-full h-full border-2 border-gray-700 rounded-lg shadow-lg"
-						allowfullscreen
-						loading="lazy"
-						title="Series Player"
-						onload={handleIframeLoad}
-						scrolling="no"
-					></iframe>
-				</div>
-				<!-- Player Controls -->
+
 				<div
-					class="flex flex-wrap items-center justify-between gap-4 p-4 bg-gray-900 rounded-lg flex-shrink-0"
+					class="series-player-frame relative rounded-lg overflow-hidden bg-black border-2 border-gray-700 shadow-lg"
 				>
-					<div class="flex items-center gap-2">
+					{#key `${selectedSource}-${selectedSeason}-${selectedEpisode}`}
+						{#if isPlayerLoading}
+							<div class="absolute inset-0 bg-gray-800 flex items-center justify-center z-10">
+								<div class="flex flex-col items-center gap-4">
+									<div
+										class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"
+									></div>
+									<p class="text-gray-400">Loading episode...</p>
+								</div>
+							</div>
+						{/if}
+						<iframe
+							src={iframeSources[selectedSource]}
+							class="absolute inset-0 block h-full w-full min-h-0 min-w-0 border-0"
+							allowfullscreen
+							loading="lazy"
+							title="Series Player"
+							onload={handleIframeLoad}
+							scrolling="no"
+						></iframe>
+					{/key}
+				</div>
+
+				<div
+					class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 bg-gray-900 border border-gray-800 rounded-lg flex-shrink-0"
+				>
+					<div class="flex items-center justify-center sm:justify-start gap-2 shrink-0">
 						<button
 							onclick={previousEpisode}
 							disabled={selectedSeason === 1 && selectedEpisode === 1}
@@ -382,43 +404,43 @@
 							<ChevronLeft size={16} />
 							<span class="hidden sm:inline">Previous</span>
 						</button>
-						<!-- <button
-                            onclick={nextEpisode}
-                            disabled={selectedSeason >= seriesDetailData.seasons.length && selectedEpisode >= episodes.length}
-                            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg shadow hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
-                        >
-                            <span class="hidden sm:inline">Next</span>
-                            <ChevronRight size={16} />
-                        </button> -->
 						<button
 							onclick={nextEpisode}
 							disabled={isDisabled}
-							class={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg shadow transition-colors
-                            ${
-															isDisabled
-																? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-																: 'text-gray-700 bg-gray-200 hover:bg-gray-300'
-														}`}
+							class={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg shadow transition-colors ${
+								isDisabled
+									? "bg-gray-100 text-gray-400 cursor-not-allowed"
+									: "text-gray-700 bg-gray-200 hover:bg-gray-300"
+							}`}
 						>
 							<span class="hidden sm:inline">Next</span>
 							<ChevronRight size={16} />
 						</button>
 					</div>
-					<!-- Server Selection -->
-					<div class="flex items-center gap-2">
-						<span class="text-sm font-medium text-gray-400">Server:</span>
-						{#each iframeSources as source, index}
-							<button
-								class={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-									index === selectedSource
-										? 'bg-white text-black'
-										: 'bg-gray-700 text-white hover:bg-gray-600'
-								}`}
-								onclick={() => changeSource(index)}
-							>
-								{index + 1}
-							</button>
-						{/each}
+
+					<div
+						class="flex items-center gap-2 min-w-0 w-full sm:w-auto sm:flex-1 sm:justify-end sm:max-w-[min(100%,42rem)] lg:max-w-none"
+					>
+						<span class="text-xs font-semibold text-gray-400 uppercase tracking-wide shrink-0"
+							>Server</span
+						>
+						<div
+							class="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 min-w-0 flex-1 sm:flex-initial sm:justify-end"
+						>
+							{#each iframeSources as _, index}
+								<button
+									type="button"
+									class={`shrink-0 px-3 py-2 text-sm font-medium rounded-lg transition-colors min-w-[2rem] ${
+										index === selectedSource
+											? "bg-white text-black shadow"
+											: "bg-gray-700 text-white hover:bg-gray-600"
+									}`}
+									onclick={() => changeSource(index)}
+								>
+									{index + 1}
+								</button>
+							{/each}
+						</div>
 					</div>
 				</div>
 			</div>
@@ -535,6 +557,20 @@
 {/if}
 
 <style>
+	.series-player-frame {
+		box-sizing: border-box;
+		width: 100%;
+		max-width: 100%;
+		aspect-ratio: 16 / 9;
+		max-height: min(52vh, calc(100dvh - 15rem));
+		margin-inline: auto;
+	}
+	@media (min-width: 1024px) {
+		.series-player-frame {
+			max-height: min(62vh, calc(100dvh - 10rem));
+		}
+	}
+
 	.no-scrollbar::-webkit-scrollbar {
 		display: none;
 	}

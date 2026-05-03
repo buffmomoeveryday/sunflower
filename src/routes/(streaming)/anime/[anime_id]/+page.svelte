@@ -115,23 +115,20 @@
 	}
 
 	onMount(async () => {
-
-
-		setTimeout(async () => {
-			try {
-				await addToAnimeHistory({
-					tmdb_id: anime_id,
-					poster: anime_data.coverImage.extraLarge || anime_data.coverImage.large,
-					name: anime_data.title.userPreferred || anime_data.title.romaji || anime_data.title.english,
-					title: anime_data.title.english || anime_data.title.romaji || "",
-					vote: anime_data.averageScore || 0,
-					start_date: `${anime_data.startDate.year}-${anime_data.startDate.month}-${anime_data.startDate.day}`,
-					episodes: anime_data.episodes || 0
-				});
-			} catch (error) {
-				console.error("Error adding to watch history:", error);
-			}
-		}, 5000);
+		if (!user) return;
+		try {
+			await addToAnimeHistory({
+				tmdb_id: anime_id,
+				poster: anime_data.coverImage.extraLarge || anime_data.coverImage.large,
+				name: anime_data.title.userPreferred || anime_data.title.romaji || anime_data.title.english,
+				title: anime_data.title.english || anime_data.title.romaji || "",
+				vote: anime_data.averageScore || 0,
+				start_date: `${anime_data.startDate.year}-${anime_data.startDate.month}-${anime_data.startDate.day}`,
+				episodes: anime_data.episodes || 0
+			});
+		} catch (error) {
+			console.error("Error adding to watch history:", error);
+		}
 	});
 
 </script>

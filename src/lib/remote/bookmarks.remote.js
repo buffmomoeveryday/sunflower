@@ -11,34 +11,72 @@ import {
 } from '../db/schema.js';
 import { eq, and, desc } from 'drizzle-orm';
 
+const strFromApi = v.pipe(
+	v.nullish(v.string()),
+	v.transform((s) => s ?? '')
+);
+
+const voteTextFromApi = v.pipe(
+	v.nullish(v.union([v.string(), v.number()])),
+	v.transform((x) => (x == null ? '0' : String(x)))
+);
+
+const countFromApi = v.pipe(
+	v.nullish(v.union([v.string(), v.number()])),
+	v.transform((x) => {
+		const n = x == null ? 0 : Number(x);
+		return Number.isFinite(n) ? n : 0;
+	})
+);
+
+const optionalSeasonEpisode = v.optional(
+	v.pipe(
+		v.nullish(v.union([v.string(), v.number()])),
+		v.transform((x) => (x == null ? undefined : Number(x)))
+	)
+);
+
+const optionalServerId = v.optional(
+	v.pipe(
+		v.nullish(v.union([v.string(), v.number()])),
+		v.transform((x) => {
+			if (x == null) return undefined;
+			const n = Math.floor(Number(x));
+			if (!Number.isFinite(n) || n < 1) return undefined;
+			return Math.min(n, 99);
+		})
+	)
+);
+
 const movieObject = v.object({
 	id: v.union([v.string(), v.number()]),
-	poster_path: v.string(),
-	title: v.string(),
-	vote_average: v.union([v.string(), v.number()]),
-	release_date: v.string(),
+	poster_path: strFromApi,
+	title: strFromApi,
+	vote_average: voteTextFromApi,
+	release_date: strFromApi,
 	genre_ids: v.array(v.union([v.string(), v.number()]))
 });
 
 const seriesObject = v.object({
 	tmdb_id: v.union([v.string(), v.number()]),
-	poster_path: v.string(),
-	name: v.string(),
-	vote_average: v.union([v.string(), v.number()]),
-	first_air_date: v.optional(v.string(), ""),
-	number_of_seasons: v.union([v.string(), v.number()]),
-	season_id: v.optional(v.union([v.string(), v.number()])),
-	episode_id: v.optional(v.union([v.string(), v.number()]))
+	poster_path: strFromApi,
+	name: strFromApi,
+	vote_average: voteTextFromApi,
+	first_air_date: strFromApi,
+	number_of_seasons: countFromApi,
+	season_id: optionalSeasonEpisode,
+	episode_id: optionalSeasonEpisode,
+	server_id: optionalServerId
 });
 
 const animeObject = v.object({
 	tmdb_id: v.union([v.string(), v.number()]),
-	poster: v.string(),
-	name: v.string(),
-	title: v.string(),
-	vote: v.union([v.string(), v.number()]),
-	start_date: v.optional(v.string(), ""),
-	episodes: v.union([v.string(), v.number()])
+	poster: strFromApi,
+	name: strFromApi,
+	title: strFromApi,
+	vote: voteTextFromApi,
+	start_date: strFromApi,
+	episodes: countFromApi
 });
 
 // --- Movie Commands ---
@@ -70,7 +108,7 @@ export const toggleMovieBookmark = command(
 					tmdbId: tmdbId.toString(),
 					posterPath: poster_path,
 					title: title,
-					voteAverage: vote_average.toString(),
+					voteAverage: vote_average,
 					releaseDate: release_date,
 					genreIds: JSON.stringify(genre_ids)
 				});
@@ -126,7 +164,7 @@ export const addToMovieHistory = command(movieObject, async (movie) => {
 				tmdbId: movie.id.toString(),
 				posterPath: movie.poster_path,
 				title: movie.title,
-				voteAverage: movie.vote_average.toString(),
+				voteAverage: movie.vote_average,
 				releaseDate: movie.release_date,
 				genreIds: JSON.stringify(movie.genre_ids)
 			});
@@ -165,9 +203,9 @@ export const toggleSeriesBookmark = command(seriesObject, async (series) => {
 				tmdbId,
 				posterPath: series.poster_path,
 				name: series.name,
-				voteAverage: series.vote_average.toString(),
+				voteAverage: series.vote_average,
 				firstAirDate: series.first_air_date,
-				numberOfSeasons: Number(series.number_of_seasons)
+				numberOfSeasons: series.number_of_seasons
 			});
 			return { success: true, action: 'added' };
 		}
@@ -201,6 +239,10 @@ export const addToSeriesHistory = command(seriesObject, async (series) => {
 	const user = event.locals.user;
 	if (!user) return { success: false, error: "Not logged in" };
 	const tmdbId = series.tmdb_id.toString();
+	const nextServer =
+		series.server_id != null ? Number(series.server_id) : undefined;
+	const clampServer = (n) =>
+		(Number.isFinite(n) ? Math.min(99, Math.max(1, Math.floor(n))) : 1);
 	try {
 		const existing = await db
 			.select()
@@ -214,19 +256,22 @@ export const addToSeriesHistory = command(seriesObject, async (series) => {
 				tmdbId,
 				posterPath: series.poster_path,
 				name: series.name,
-				voteAverage: series.vote_average.toString(),
+				voteAverage: series.vote_average,
 				firstAirDate: series.first_air_date,
-				numberOfSeasons: Number(series.number_of_seasons),
+				numberOfSeasons: series.number_of_seasons,
 				seasonId: series.season_id ? Number(series.season_id) : 1,
-				episodeId: series.episode_id ? Number(series.episode_id) : 1
+				episodeId: series.episode_id ? Number(series.episode_id) : 1,
+				serverId: nextServer != null ? clampServer(nextServer) : 1
 			});
 		} else {
-			// Update the existing history record with new progress
+			const resolvedServer =
+				nextServer != null ? clampServer(nextServer) : existing.serverId;
 			await db.update(seriesWatchHistory)
 				.set({
 					seasonId: series.season_id ? Number(series.season_id) : existing.seasonId,
 					episodeId: series.episode_id ? Number(series.episode_id) : existing.episodeId,
-					createdAt: new Date() // Update timestamp to bring it to top
+					serverId: resolvedServer,
+					createdAt: new Date()
 				})
 				.where(eq(seriesWatchHistory.id, existing.id));
 		}
@@ -260,10 +305,10 @@ export const toggleAnimeBookmark = command(animeObject, async (anime) => {
 				tmdbId,
 				poster: anime.poster,
 				name: anime.name,
-				vote: anime.vote.toString(),
+				vote: anime.vote,
 				startDate: anime.start_date,
 				title: anime.title,
-				episodes: Number(anime.episodes)
+				episodes: anime.episodes
 			});
 			return { success: true, action: 'added' };
 		}
@@ -310,10 +355,10 @@ export const addToAnimeHistory = command(animeObject, async (anime) => {
 				tmdbId,
 				poster: anime.poster,
 				name: anime.name,
-				vote: anime.vote.toString(),
+				vote: anime.vote,
 				startDate: anime.start_date,
 				title: anime.title,
-				episodes: Number(anime.episodes)
+				episodes: anime.episodes
 			});
 		} else {
 			await db.update(animesWatchHistory)
@@ -366,7 +411,7 @@ export const getBookmarkedSeries = command(v.any(), async () => {
 			.all();
 		return results.map((m) => ({
 			...m,
-			id: m.id,
+			id: m.tmdbId,
 			tmdb_id: m.tmdbId,
 			poster_path: m.posterPath,
 			vote_average: m.voteAverage,
@@ -391,7 +436,7 @@ export const getBookmarkedAnime = command(v.any(), async () => {
 			.all();
 		return results.map((m) => ({
 			...m,
-			id: m.id,
+			id: m.tmdbId,
 			tmdb_id: m.tmdbId
 		}));
 	} catch (err) {
@@ -446,7 +491,8 @@ export const getSeriesHistory = command(v.any(), async () => {
 			first_air_date: m.firstAirDate,
 			number_of_seasons: m.numberOfSeasons,
 			season_id: m.seasonId,
-			episode_id: m.episodeId
+			episode_id: m.episodeId,
+			server_id: m.serverId
 		}));
 	} catch (err) {
 		return [];

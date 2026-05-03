@@ -36,6 +36,13 @@
       "when": 1777703425141,
       "tag": "0004_short_vin_gonzales",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1777703425143,
+      "tag": "0005_series_watch_server_id",
+      "breakpoints": true
     }
   ]
 }

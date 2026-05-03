@@ -10,6 +10,7 @@
 	import { toast } from "svelte-sonner";
 
 	import { page } from "$app/stores";
+	import { get } from "svelte/store";
 	import { goto } from "$app/navigation";
 	import { PersistedState } from "runed";
 	import { getEpisodes } from "$lib/remote/series.remote";
@@ -58,11 +59,7 @@
 			isInitialLoad = false;
 		} else {
 			// Sync state to URL if URL doesn't match
-			if (
-				s !== selectedSeason ||
-				e !== selectedEpisode ||
-				sv - 1 !== selectedSource
-			) {
+			if (s !== selectedSeason || e !== selectedEpisode || sv - 1 !== selectedSource) {
 				const url = new URL($page.url);
 				url.searchParams.set("season", selectedSeason.toString());
 				url.searchParams.set("episode", selectedEpisode.toString());
@@ -77,7 +74,6 @@
 
 	let isSidebarVisible = $state(false);
 	let isPlayerLoading = $state(true);
-
 
 	let iframeSources = $derived([
 		`https://vidsrc.icu/embed/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`,
@@ -105,8 +101,7 @@
 
 	let isDisabled = $derived.by(() => {
 		!isNextEpisodeAvailable ||
-			(selectedSeason >= seriesDetailData.seasons.length &&
-				selectedEpisode >= episodes.length);
+			(selectedSeason >= seriesDetailData.seasons.length && selectedEpisode >= episodes.length);
 	});
 
 	async function updateProgressInDatabase() {
@@ -120,7 +115,8 @@
 				first_air_date: seriesDetailData.first_air_date,
 				number_of_seasons: seriesDetailData.number_of_seasons,
 				season_id: selectedSeason,
-				episode_id: selectedEpisode
+				episode_id: selectedEpisode,
+				server_id: selectedSource + 1
 			});
 		} catch (error) {
 			console.error("Error updating progress:", error);
@@ -153,9 +149,15 @@
 		);
 	}
 
-	function changeSource(index) {
+	async function changeSource(index) {
 		selectedSource = index;
 		isPlayerLoading = true;
+		const url = new URL(get(page).url);
+		url.searchParams.set("season", selectedSeason.toString());
+		url.searchParams.set("episode", selectedEpisode.toString());
+		url.searchParams.set("server_id", (index + 1).toString());
+		goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+		await updateProgressInDatabase();
 	}
 
 	function handleIframeLoad() {
@@ -231,20 +233,21 @@
 		await getProgress();
 
 		if (user) {
-			setTimeout(async () => {
-				try {
-					await addToSeriesHistory({
-						tmdb_id: seriesDetailData.id,
-						poster_path: seriesDetailData.poster_path,
-						name: seriesDetailData.name,
-						vote_average: seriesDetailData.vote_average,
-						first_air_date: seriesDetailData.first_air_date,
-						number_of_seasons: seriesDetailData.number_of_seasons
-					});
-				} catch (error) {
-					console.error("Error adding to watch history:", error);
-				}
-			}, 5000);
+			try {
+				await addToSeriesHistory({
+					tmdb_id: seriesDetailData.id,
+					poster_path: seriesDetailData.poster_path,
+					name: seriesDetailData.name,
+					vote_average: seriesDetailData.vote_average,
+					first_air_date: seriesDetailData.first_air_date,
+					number_of_seasons: seriesDetailData.number_of_seasons,
+					season_id: selectedSeason,
+					episode_id: selectedEpisode,
+					server_id: selectedSource + 1
+				});
+			} catch (error) {
+				console.error("Error adding to watch history:", error);
+			}
 		}
 	});
 </script>
@@ -258,7 +261,7 @@
 	}}
 />
 
-<div class="flex flex-col min-h-screen text-white bg-black">
+<div class="flex flex-col min-h-0 text-white bg-black">
 	<!-- Mobile Header -->
 	<div
 		class="flex items-center justify-between p-3 sm:p-4 bg-black border-b border-gray-800 lg:hidden"
@@ -288,7 +291,7 @@
 		</button>
 	</div>
 
-	<div class="flex flex-1 overflow-hidden">
+	<div class="flex flex-1 min-h-0 overflow-hidden">
 		<!-- Sidebar -->
 		<div
 			class={`
@@ -407,12 +410,11 @@
 		</div>
 
 		<!-- Main Content -->
-		<div class="flex-1 flex flex-col lg:w-3/4 xl:w-4/5 min-h-0">
+		<div class="flex-1 flex flex-col min-h-0 overflow-y-auto lg:w-3/4 xl:w-4/5">
 			<!-- Video Player Section -->
-			<div class="flex-1 flex flex-col p-2 sm:p-4 lg:p-6 min-h-0">
-				<!-- Title - Hidden on mobile when sidebar is visible -->
-				<div class="mb-3 sm:mb-4 flex-shrink-0">
-					<h2 class="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-1 sm:mb-2 truncate">
+			<div class="flex flex-col min-h-0 p-2 sm:p-4 lg:p-6 shrink-0">
+				<div class="mb-2 sm:mb-3 flex-shrink-0">
+					<h2 class="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-0.5 sm:mb-1 truncate">
 						{seriesDetailData.name}
 					</h2>
 					<div class="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-400">
@@ -428,17 +430,12 @@
 					</div>
 				</div>
 
-				<!-- Video Player Container - Responsive aspect ratio -->
-				<div class="relative flex-1 mb-3 sm:mb-4 min-h-0">
-					<!-- Ensure minimum height for mobile -->
-					<div
-						class="w-full h-full min-h-[200px] sm:min-h-[250px] md:min-h-[350px] lg:min-h-[400px]"
-					>
-						<!-- Loading Skeleton -->
+				<div
+					class="series-player-frame relative rounded-lg overflow-hidden bg-black border-2 border-gray-700 shadow-lg"
+				>
+					{#key `${selectedSource}-${selectedSeason}-${selectedEpisode}`}
 						{#if isPlayerLoading}
-							<div
-								class="absolute inset-0 bg-gray-800 rounded-lg flex items-center justify-center z-10"
-							>
+							<div class="absolute inset-0 bg-gray-800 flex items-center justify-center z-10">
 								<div class="flex flex-col items-center gap-3 sm:gap-4">
 									<div
 										class="w-8 h-8 sm:w-12 sm:h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"
@@ -447,11 +444,9 @@
 								</div>
 							</div>
 						{/if}
-
-						<!-- Video Player -->
 						<iframe
 							src={iframeSources[selectedSource]}
-							class="w-full h-full border-2 border-gray-700 rounded-lg shadow-lg"
+							class="absolute inset-0 block h-full w-full min-h-0 min-w-0 border-0"
 							allowfullscreen
 							loading="lazy"
 							title="Series Player"
@@ -459,15 +454,13 @@
 							scrolling="no"
 							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
 						></iframe>
-					</div>
+					{/key}
 				</div>
 
-				<!-- Player Controls - Responsive layout -->
 				<div
-					class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-900 rounded-lg flex-shrink-0"
+					class="mt-2 sm:mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 bg-gray-900 border border-gray-800 rounded-lg flex-shrink-0"
 				>
-					<!-- Navigation Controls -->
-					<div class="flex items-center justify-center sm:justify-start gap-2">
+					<div class="flex items-center justify-center sm:justify-start gap-2 shrink-0">
 						<button
 							onclick={previousEpisode}
 							disabled={selectedSeason === 1 && selectedEpisode === 1}
@@ -480,29 +473,32 @@
 						<button
 							onclick={nextEpisode}
 							disabled={isDisabled}
-							class={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg shadow transition-colors
-                            ${
-															isDisabled
-																? "bg-gray-100 text-gray-400 cursor-not-allowed"
-																: "text-gray-700 bg-gray-200 hover:bg-gray-300"
-														}`}
+							class={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg shadow transition-colors ${
+								isDisabled
+									? "bg-gray-100 text-gray-400 cursor-not-allowed"
+									: "text-gray-700 bg-gray-200 hover:bg-gray-300"
+							}`}
 						>
 							<span class="hidden xs:inline">Next</span>
 							<ChevronRight size={14} class="sm:w-4 sm:h-4" />
 						</button>
 					</div>
 
-					<!-- Server Selection - Responsive grid -->
-					<div class="flex flex-col sm:flex-row items-center gap-2">
-						<span class="text-xs sm:text-sm font-medium text-gray-400 whitespace-nowrap"
-							>Server:</span
+					<div
+						class="flex items-center gap-2 min-w-0 w-full sm:w-auto sm:flex-1 sm:justify-end sm:max-w-[min(100%,42rem)] lg:max-w-none"
+					>
+						<span class="text-xs font-semibold text-gray-400 uppercase tracking-wide shrink-0"
+							>Server</span
 						>
-						<div class="flex flex-wrap items-center justify-center gap-1 sm:gap-2 max-w-full">
-							{#each iframeSources as source, index}
+						<div
+							class="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 min-w-0 flex-1 sm:flex-initial sm:justify-end"
+						>
+							{#each iframeSources as _, index}
 								<button
-									class={`px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors min-w-[32px] ${
+									type="button"
+									class={`shrink-0 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors min-w-[2rem] ${
 										index === selectedSource
-											? "bg-white text-black"
+											? "bg-white text-black shadow"
 											: "bg-gray-700 text-white hover:bg-gray-600"
 									}`}
 									onclick={() => changeSource(index)}
@@ -639,6 +635,20 @@
 {/if}
 
 <style>
+	.series-player-frame {
+		box-sizing: border-box;
+		width: 100%;
+		max-width: 100%;
+		aspect-ratio: 16 / 9;
+		max-height: min(52vh, calc(100dvh - 15rem));
+		margin-inline: auto;
+	}
+	@media (min-width: 1024px) {
+		.series-player-frame {
+			max-height: min(62vh, calc(100dvh - 10rem));
+		}
+	}
+
 	.no-scrollbar::-webkit-scrollbar {
 		display: none;
 	}
@@ -647,7 +657,6 @@
 		scrollbar-width: none;
 	}
 
-	/* Custom breakpoint for extra small screens */
 	@media (min-width: 480px) {
 		.xs\:inline {
 			display: inline;

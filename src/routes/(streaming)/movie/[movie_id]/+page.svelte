@@ -13,13 +13,13 @@
 
 
 	let { data } = $props();
-	let isBookmarked = $derived(isMovieBookmarkedLocal(movie_data.id));
-
 
 	let user = data?.user;
 	let movie_data = data.movieData;
 	let movie_id = data.movieData.id;
 	let recommendation_data = data.recommendation_data;
+
+	let isBookmarked = $derived(isMovieBookmarkedLocal(movie_data.id));
 
 	const safeMovieId = String(movie_id).trim();
 
@@ -44,9 +44,15 @@
 	]);
 
 	let selectedSource = $state(0);
+	let isPlayerLoading = $state(true);
 
 	function changeSource(index) {
 		selectedSource = index;
+		isPlayerLoading = true;
+	}
+
+	function handleIframeLoad() {
+		isPlayerLoading = false;
 	}
 
 
@@ -82,21 +88,18 @@
 	}
 
 	onMount(async () => {
-		if (user) {
-			setTimeout(async () => {
-				try {
-					await addToMovieHistory({
-						id: movie_data.id,
-						poster_path: movie_data.poster_path,
-						title: movie_data.title,
-						vote_average: movie_data.vote_average,
-						release_date: movie_data.release_date,
-						genre_ids: movie_data.genres ? movie_data.genres.map(g => g.id) : []
-					});
-				} catch (error) {
-					console.error("Error adding to watch history:", error);
-				}
-			}, 5000);
+		if (!user) return;
+		try {
+			await addToMovieHistory({
+				id: movie_data.id,
+				poster_path: movie_data.poster_path,
+				title: movie_data.title,
+				vote_average: movie_data.vote_average,
+				release_date: movie_data.release_date,
+				genre_ids: movie_data.genres ? movie_data.genres.map((g) => g.id) : []
+			});
+		} catch (error) {
+			console.error("Error adding to watch history:", error);
 		}
 	});
 
@@ -112,11 +115,13 @@
 <svelte:window on:message={handleMessage} />
 
 <div class="flex flex-col min-h-screen bg-black text-white overflow-x-hidden">
-	<!-- Main Responsive Layout -->
-	<div class="flex flex-col lg:flex-row flex-1 p-2 sm:p-4 md:p-6 gap-4 md:gap-6 min-h-0">
+	<!-- Main row: cap height on lg so the player fits the viewport; sidebar scrolls inside -->
+	<div
+		class="movie-detail-hero flex flex-col lg:flex-row flex-1 min-h-0 p-2 sm:p-4 md:p-6 gap-4 md:gap-6 lg:h-[calc(100svh-10rem)] lg:max-h-[calc(100svh-10rem)] lg:shrink-0 lg:items-stretch"
+	>
 		<!-- Movie Details Sidebar (Desktop: always visible, Mobile: toggleable) -->
 		<div
-			class="w-full lg:w-80 lg:flex-shrink-0 order-2 lg:order-1
+			class="w-full lg:w-80 lg:flex-shrink-0 lg:min-h-0 lg:max-h-full lg:overflow-y-auto order-2 lg:order-1
                     {isSidebarVisible ? 'block' : 'hidden'} lg:block"
 		>
 			<!-- Close button for mobile -->
@@ -234,10 +239,10 @@
 			</div>
 		</div>
 
-		<!-- Video Player & Server Controls (Stacked vertically) -->
-		<div class="flex-1 flex flex-col min-h-0 order-1 lg:order-2">
+		<!-- Video player then control bar (layout matches series). lg: grid reserves a row for servers so they are never clipped. -->
+		<div class="flex-1 flex flex-col min-h-0 min-w-0 order-1 lg:order-2 lg:h-full lg:min-h-0">
 			<!-- Mobile Header with Toggle Button -->
-			<div class="lg:hidden flex items-center justify-between mb-3">
+			<div class="lg:hidden flex items-center justify-between mb-3 shrink-0">
 				<h1 class="text-lg font-bold truncate">
 					{movie_data.title || movie_data.original_title}
 				</h1>
@@ -251,30 +256,57 @@
 				</button>
 			</div>
 
-			<!-- Video Player -->
 			<div
-				class="flex-1 relative bg-gray-900 border-2 border-gray-700 rounded-lg shadow-lg overflow-hidden min-h-[180px] sm:min-h-[280px] md:min-h-[400px]"
+				class="movie-player-stack flex flex-1 flex-col min-h-0 lg:grid lg:min-h-0 lg:grid-rows-[minmax(0,1fr)_auto] lg:gap-3"
 			>
-				<iframe
-					src={iframeSources[selectedSource]}
-					class="absolute inset-0 w-full h-full"
-					allow="encrypted-media; fullscreen"
-					allowfullscreen
-					loading="lazy"
-					title="Movie Player"
-					referrerpolicy="no-referrer"
-				></iframe>
-			</div>
+				<div class="movie-player-shell min-h-0 min-w-0 overflow-hidden lg:h-full lg:min-h-0">
+					<div
+						class="movie-player-frame relative rounded-lg overflow-hidden bg-black border-2 border-gray-700 shadow-lg"
+					>
+						{#key selectedSource}
+							{#if isPlayerLoading}
+								<div
+									class="absolute inset-0 z-10 flex items-center justify-center bg-gray-900/95"
+								>
+									<div class="flex flex-col items-center gap-3">
+										<div
+											class="h-10 w-10 animate-spin rounded-full border-4 border-pink-500 border-t-transparent sm:h-12 sm:w-12"
+										></div>
+										<p class="text-sm text-gray-400">Loading player…</p>
+									</div>
+								</div>
+							{/if}
+							<iframe
+								src={iframeSources[selectedSource]}
+								class="absolute inset-0 block h-full w-full min-h-0 min-w-0 border-0"
+								allow="encrypted-media; fullscreen; autoplay"
+								allowfullscreen
+								loading="lazy"
+								title="Movie Player"
+								referrerpolicy="no-referrer"
+								onload={handleIframeLoad}
+							></iframe>
+						{/key}
+					</div>
+				</div>
 
-			<!-- Server Selection - Always Directly Below Player -->
-			<div class="mt-3 p-3 bg-gray-900 rounded-lg">
-				<div class="flex items-center flex-wrap gap-2">
-					<span class="text-xs font-medium text-gray-400 whitespace-nowrap">Server:</span>
-					<div class="flex flex-wrap gap-1.5 flex-1 min-w-0">
+			<div
+				class="mt-2 sm:mt-3 lg:mt-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 bg-gray-900 border border-gray-800 rounded-lg shrink-0"
+			>
+				<div class="hidden sm:flex items-center justify-center sm:justify-start gap-2 shrink-0" aria-hidden="true"></div>
+
+				<div
+					class="flex items-center gap-2 min-w-0 w-full sm:w-auto sm:flex-1 sm:justify-end sm:max-w-[min(100%,42rem)] lg:max-w-none"
+				>
+					<span class="text-xs font-semibold text-gray-400 uppercase tracking-wide shrink-0">Server</span>
+					<div
+						class="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 min-w-0 flex-1 sm:flex-initial sm:justify-end"
+					>
 						{#each iframeSources as _, index}
 							<button
+								type="button"
 								onclick={() => changeSource(index)}
-								class={`px-2.5 py-1.5 text-xs font-medium rounded-lg min-w-[32px] text-center transition ${
+								class={`shrink-0 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors min-w-[2rem] ${
 									index === selectedSource
 										? "bg-white text-black shadow"
 										: "bg-gray-700 text-white hover:bg-gray-600"
@@ -286,6 +318,7 @@
 						{/each}
 					</div>
 				</div>
+			</div>
 			</div>
 		</div>
 	</div>
@@ -322,6 +355,52 @@
 </div>
 
 <style>
+	/* Fixed hero height on lg gives the player column a definite block size (flex + cqh was collapsing). */
+	@media (min-width: 1024px) {
+		.movie-detail-hero {
+			min-height: 0;
+		}
+	}
+
+	.movie-player-shell {
+		flex: 1 1 0%;
+		min-height: 0;
+		min-width: 0;
+		width: 100%;
+		align-self: stretch;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	@media (min-width: 1024px) {
+		.movie-player-shell {
+			flex: none;
+			height: 100%;
+			align-items: flex-start;
+		}
+	}
+
+	.movie-player-frame {
+		box-sizing: border-box;
+		width: 100%;
+		max-width: 100%;
+		max-height: 100%;
+		aspect-ratio: 16 / 9;
+		height: auto;
+		margin-inline: auto;
+	}
+
+	@media (max-width: 1023px) {
+		.movie-player-shell {
+			min-height: max(11rem, min(56vh, calc(100dvh - 12rem)));
+		}
+
+		.movie-player-frame {
+			max-height: min(78vh, calc(100dvh - 10rem));
+		}
+	}
+
 	.line-clamp-5 {
 		display: -webkit-box;
 		-webkit-line-clamp: 5;

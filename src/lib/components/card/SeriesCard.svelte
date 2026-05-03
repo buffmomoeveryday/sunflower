@@ -79,7 +79,9 @@
 		() => showTrailer,
 		async () => {
 			if (showTrailer) {
-				let { trailer, details, reviews } = await getSeriesTrailer(tmdb_id.toString());
+				let { trailer, details, reviews } = await getSeriesTrailer(
+					String(tmdb_id ?? id ?? "")
+				);
 				trailerKey = trailer;
 				trailerDetails = details;
 				trailerReviews = reviews;
@@ -118,7 +120,7 @@
 			{/if}
 		</button>
 
-		<a href="/series/{tmdb_id}" class="flex flex-col h-full">
+		<a href="/series/{tmdb_id ?? id}" class="flex flex-col h-full">
 			<div class="relative aspect-[2/3] w-full overflow-hidden flex-shrink-0">
 				<img
 					src={poster_path

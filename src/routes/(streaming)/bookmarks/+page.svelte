@@ -2,8 +2,11 @@
 	import MovieCard from "$lib/components/card/MovieCard.svelte";
 	import SeriesCard from "$lib/components/card/SeriesCard.svelte";
 	import AnimeCard from "$lib/components/card/AnimeCard.svelte";
-	import { getBookmarkedMovies, getBookmarkedSeries, getBookmarkedAnime } from "$lib/remote/bookmarks.remote.js";
-
+	import {
+		getBookmarkedMovies,
+		getBookmarkedSeries,
+		getBookmarkedAnime
+	} from "$lib/remote/bookmarks.remote.js";
 
 	import { PersistedState } from "runed";
 	import { toast } from "svelte-sonner";
@@ -21,14 +24,13 @@
 		bookmarkedAnime = await getBookmarkedAnime();
 	});
 
-
 	function setActiveTab(tab) {
 		activeTab.current = tab;
 	}
 </script>
 
-<div class="min-h-screen bg-black text-white p-6">
-	<div class="container mx-auto max-w-6xl bg-black rounded-2xl p-6 shadow-lg">
+<div class="min-h-screen text-white p-6">
+	<div class="container mx-auto max-w-6xl rounded-2xl p-6 shadow-lg">
 		<!-- Header -->
 		<div class="mb-8">
 			<h1 class="text-3xl font-bold text-white mb-2">My Bookmarks</h1>

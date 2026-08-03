@@ -1,62 +1,26 @@
-import { error } from '@sveltejs/kit';
 import { fetchWithCache, API_KEY } from '$lib/utils.js';
 
-const fetchAnime = async () => {
-	const query = `
-  query ($page: Int, $perPage: Int) {
-    Page(page: $page, perPage: $perPage) {
-      media(sort: TRENDING_DESC, type: ANIME) {
-        id
-        title {
-          romaji
-          english
-          native
-        }
-        coverImage {
-          large
-        }
-        siteUrl
-        episodes
-        description(asHtml: false)
-        averageScore
-        popularity
-        startDate {
-          year
-        }
-        genres
-      }
-    }
-  }
-  `;
+/**
+ * TMDB has no dedicated "anime" media type. TV + filters approximate Japanese anime:
+ * genre 16 = Animation, with_original_language=ja = Japanese primary language.
+ * (Some titles may be missing or western animation in Japanese — tune filters if needed.)
+ */
+export async function load() {
+	const base = `https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&language=en-US&include_adult=false&with_genres=16&with_original_language=ja`;
 
-	const variables = {
-		page: 1,
-		perPage: 50
-	};
+	const popularAnimeUrl = `${base}&sort_by=popularity.desc&page=1`;
+	const topRatedAnimeUrl = `${base}&sort_by=vote_average.desc&vote_count.gte=150&page=1`;
+	const recentAnimeUrl = `${base}&sort_by=first_air_date.desc&page=1`;
 
-	try {
-		const response = await fetch('https://graphql.anilist.co', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Accept: 'application/json'
-			},
-			body: JSON.stringify({
-				query,
-				variables
-			})
-		});
+	const [popularAnime, topRatedAnime, recentAnime] = await Promise.all([
+		fetchWithCache(popularAnimeUrl, 'tmdbAnimePopularJa'),
+		fetchWithCache(topRatedAnimeUrl, 'tmdbAnimeTopRatedJa'),
+		fetchWithCache(recentAnimeUrl, 'tmdbAnimeRecentJa')
+	]);
 
-		const json = await response.json();
-		return json.data.Page.media;
-	} catch (error) {
-		console.error('Error fetching trending anime:', error);
-		return error(404,"Error ")
-	}
-};
-
-export async function load({ parms }) {
 	return {
-		animeData: await fetchAnime()
+		popularAnime,
+		topRatedAnime,
+		recentAnime
 	};
 }

@@ -27,12 +27,43 @@
 		Menu,
 		X,
 		SearchSlashIcon,
-		Bookmark
+		Bookmark,
+		Moon,
+		Sun
 	} from "lucide-svelte";
 
 	let { data } = $props();
 	let seriesDetailData = data.seriesDetailData;
 	let user = data?.user;
+
+	const IDLE_MS = 15_000;
+	const manualCinema = new PersistedState(`seriesCinemaManual_${seriesDetailData.id}`, false);
+	let idleDimmed = $state(false);
+	/** @type {ReturnType<typeof setTimeout> | null} */
+	let idleTimerId = null;
+
+	let chromeDimmed = $derived.by(() => idleDimmed || manualCinema.current);
+
+	function armIdleTimer() {
+		if (idleTimerId) clearTimeout(idleTimerId);
+		idleTimerId = setTimeout(() => {
+			idleTimerId = null;
+			idleDimmed = true;
+		}, IDLE_MS);
+	}
+
+	function resetIdleFromActivity() {
+		idleDimmed = false;
+		armIdleTimer();
+	}
+
+	function toggleManualCinema() {
+		manualCinema.current = !manualCinema.current;
+		if (!manualCinema.current) {
+			idleDimmed = false;
+		}
+		armIdleTimer();
+	}
 
 	let selectedSource = $state(0);
 	let selectedSeason = $state(1);
@@ -250,6 +281,26 @@
 			}
 		}
 	});
+
+	onMount(() => {
+		const opts = { passive: true };
+		const onActivity = () => resetIdleFromActivity();
+		window.addEventListener("pointermove", onActivity, opts);
+		window.addEventListener("pointerdown", onActivity, opts);
+		window.addEventListener("keydown", onActivity);
+		window.addEventListener("wheel", onActivity, opts);
+		window.addEventListener("touchstart", onActivity, opts);
+		armIdleTimer();
+		return () => {
+			window.removeEventListener("pointermove", onActivity, opts);
+			window.removeEventListener("pointerdown", onActivity, opts);
+			window.removeEventListener("keydown", onActivity);
+			window.removeEventListener("wheel", onActivity, opts);
+			window.removeEventListener("touchstart", onActivity);
+			if (idleTimerId) clearTimeout(idleTimerId);
+			idleTimerId = null;
+		};
+	});
 </script>
 
 <svelte:window
@@ -264,7 +315,9 @@
 <div class="flex flex-col min-h-0 text-white bg-black">
 	<!-- Mobile Header -->
 	<div
-		class="flex items-center justify-between p-3 sm:p-4 bg-black border-b border-gray-800 lg:hidden"
+		class="flex items-center justify-between p-3 sm:p-4 bg-black border-b border-gray-800 lg:hidden transition-opacity duration-500 {chromeDimmed
+			? 'opacity-30'
+			: 'opacity-100'}"
 	>
 		<button
 			onclick={toggleSidebar}
@@ -295,10 +348,11 @@
 		<!-- Sidebar -->
 		<div
 			class={`
-            fixed inset-y-0 left-0 z-50 w-full max-w-sm bg-black border-r border-gray-800 transform transition-transform duration-300 ease-in-out
+            fixed inset-y-0 left-0 z-50 w-full max-w-sm bg-black border-r border-gray-800 transform transition-all duration-300 ease-in-out
             sm:w-80
             lg:relative lg:translate-x-0 lg:w-1/4 xl:w-1/5 lg:h-full
             ${isSidebarVisible ? "translate-x-0" : "-translate-x-full"}
+			${chromeDimmed ? "opacity-30" : "opacity-100"}
         `}
 		>
 			<div class="flex flex-col h-full">
@@ -413,7 +467,11 @@
 		<div class="flex-1 flex flex-col min-h-0 overflow-y-auto lg:w-3/4 xl:w-4/5">
 			<!-- Video Player Section -->
 			<div class="flex flex-col min-h-0 p-2 sm:p-4 lg:p-6 shrink-0">
-				<div class="mb-2 sm:mb-3 flex-shrink-0">
+				<div
+					class="mb-2 sm:mb-3 flex-shrink-0 transition-opacity duration-500 {chromeDimmed
+						? 'opacity-30'
+						: 'opacity-100'}"
+				>
 					<h2 class="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-0.5 sm:mb-1 truncate">
 						{seriesDetailData.name}
 					</h2>
@@ -458,7 +516,9 @@
 				</div>
 
 				<div
-					class="mt-2 sm:mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 bg-gray-900 border border-gray-800 rounded-lg flex-shrink-0"
+					class="mt-2 sm:mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 bg-gray-900 border border-gray-800 rounded-lg flex-shrink-0 transition-opacity duration-500 {chromeDimmed
+						? 'opacity-30'
+						: 'opacity-100'}"
 				>
 					<div class="flex items-center justify-center sm:justify-start gap-2 shrink-0">
 						<button
@@ -481,6 +541,23 @@
 						>
 							<span class="hidden xs:inline">Next</span>
 							<ChevronRight size={14} class="sm:w-4 sm:h-4" />
+						</button>
+
+						<button
+							type="button"
+							onclick={() => toggleManualCinema()}
+							class="flex items-center justify-center p-2 rounded-lg border border-gray-600 bg-gray-800 text-white hover:bg-gray-700 transition-colors shrink-0"
+							aria-pressed={manualCinema.current}
+							aria-label={manualCinema.current
+								? "Lights on: show full interface"
+								: "Lights off: dim interface (saved)"}
+							title="Cinema mode"
+						>
+							{#if manualCinema.current}
+								<Sun size={18} class="sm:w-5 sm:h-5 text-amber-300" />
+							{:else}
+								<Moon size={18} class="sm:w-5 sm:h-5 text-gray-300" />
+							{/if}
 						</button>
 					</div>
 
@@ -513,7 +590,9 @@
 
 			<!-- Info Section - Scrollable on mobile -->
 			<div
-				class="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 overflow-y-auto flex-shrink-0 max-h-64 sm:max-h-72 lg:max-h-80 no-scrollbar"
+				class="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 overflow-y-auto flex-shrink-0 max-h-64 sm:max-h-72 lg:max-h-80 no-scrollbar transition-opacity duration-500 {chromeDimmed
+					? 'opacity-30'
+					: 'opacity-100'}"
 			>
 				<!-- About Section -->
 				<div class="p-4 sm:p-6 bg-gray-900 rounded-lg">
@@ -629,7 +708,9 @@
 	<div
 		role="button"
 		tabindex="0"
-		class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+		class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden transition-opacity duration-500 {chromeDimmed
+			? 'opacity-30'
+			: 'opacity-100'}"
 		onclick={toggleSidebar}
 	></div>
 {/if}

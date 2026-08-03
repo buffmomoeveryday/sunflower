@@ -1,31 +1,47 @@
 <script>
-	import { onMount } from "svelte";
 	import { page } from "$app/stores";
 	import { getStreams, getMatches } from "$lib/remote/sports.remote";
 	import { Play, Share2, Info, ChevronLeft, Layout, Monitor, Users } from "lucide-svelte";
 	import { goto } from "$app/navigation";
 
-	let { source, id } = $page.params;
+	let source = $derived($page.params.source);
+	let id = $derived($page.params.id);
+
 	let streams = $state([]);
 	let matchInfo = $state(null);
 	let selectedStream = $state(null);
 	let loading = $state(true);
 	let isPlayerLoading = $state(true);
-	onMount(async () => {
-		const streamsTask = getStreams({ source, id });
 
-		const matchesTask = getMatches("all");
+	$effect(() => {
+		// Capture current values for the async callback
+		const currentSource = source;
+		const currentId = id;
 
-		const [streamsRes, allMatches] = await Promise.all([streamsTask, matchesTask]);
+		// Reset state for new navigation
+		loading = true;
+		isPlayerLoading = true;
+		streams = [];
+		selectedStream = null;
+		matchInfo = null;
 
-		streams = streamsRes;
-		if (streams.length > 0) {
-			selectedStream = streams[0];
+		async function loadData() {
+			const streamsTask = getStreams({ source: currentSource, id: currentId });
+			const matchesTask = getMatches("all");
+			const [streamsRes, allMatches] = await Promise.all([streamsTask, matchesTask]);
+
+			streams = streamsRes;
+			if (streams.length > 0) {
+				selectedStream = streams[0];
+			}
+
+			matchInfo = allMatches.find((m) =>
+				m.sources.some((s) => s.source === currentSource && s.id === currentId)
+			);
+			loading = false;
 		}
 
-		matchInfo = allMatches.find((m) => m.sources.some((s) => s.source === source && s.id === id));
-
-		loading = false;
+		loadData();
 	});
 
 	function handleStreamChange(stream) {

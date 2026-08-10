@@ -14,6 +14,9 @@
 	import { ProgressBar } from "@prgm/sveltekit-progress-bar";
 	import { fade, slide } from "svelte/transition";
 	import { authClient } from "$lib/auth/auth-client";
+	import { getCinemaDimmed } from "$lib/state/cinemaDim.svelte.js";
+
+	const cinemaDimmed = $derived(getCinemaDimmed());
 
 	// Destructure props - Svelte 5 style
 	let { data, user, gravitarUrl } = $props();
@@ -69,7 +72,11 @@
 
 <svelte:window onclick={handleWindowClick} />
 
-<nav class="sticky top-0 z-50 w-full border-b border-gray-800 bg-black backdrop-blur-sm">
+<nav
+	class="sticky top-0 z-50 w-full border-b border-gray-800 bg-black backdrop-blur-sm transition-opacity duration-500 {cinemaDimmed
+		? 'opacity-30 hover:opacity-100 focus-within:opacity-100'
+		: 'opacity-100'}"
+>
 	<div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
 		<div class="flex items-center justify-between h-16">
 			<div class="flex items-center space-x-4">

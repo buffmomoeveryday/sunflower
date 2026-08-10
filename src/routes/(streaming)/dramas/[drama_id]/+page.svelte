@@ -7,6 +7,7 @@
 	import { page } from "$app/stores";
 	import { goto } from "$app/navigation";
 	import { getEpisodes } from "$lib/remote/series.remote";
+	import { createProgressSync } from "$lib/player/watchProgress.js";
 	import {
 		Heart,
 		ChevronLeft,
@@ -23,6 +24,18 @@
 	let { data } = $props();
 	let seriesDetailData = data.seriesDetailData;
 	let user = data?.user;
+
+	let iframeEl = $state();
+	const progressSync = createProgressSync({
+		type: "series",
+		getMeta: () => ({
+			tmdbId: seriesDetailData.id,
+			seasonId: selectedSeason,
+			episodeId: selectedEpisode,
+			serverId: selectedSource + 1
+		}),
+		isEnabled: () => !!user
+	});
 
 	function readPlaybackQuery(sp) {
 		const s = parseInt(sp.get("season") ?? "", 10);
@@ -61,7 +74,7 @@
 		`https://vidlink.pro/tv/${seriesDetailData.id}/${selectedSeason}/${selectedEpisode}`, //supports events
 		`https://embed.rgshows.me/api/2/tv/?id=${seriesDetailData.id}&s=${selectedSeason}&e=${selectedSeason}`,
 		`https://embed.rgshows.me/api/3/tv/?id=${seriesDetailData.id}&s=${selectedSeason}&e=${selectedEpisode}`,
-		`https://drama.autoembed.cc/embed/kissed-by-the-rain-2024-episode-11`
+		// `https://drama.autoembed.cc/embed/kissed-by-the-rain-2024-episode-11`
 	]);
 
 	let isNextEpisodeAvailable = $derived(() => {
@@ -141,6 +154,7 @@
 	async function selectEpisode(episodeId) {
 		selectedEpisode = episodeId;
 		isPlayerLoading = true; // Set loading state when changing episodes
+		progressSync.reset();
 		await updateProgressInDatabase();
 	}
 	async function changeSource(index) {
@@ -151,12 +165,15 @@
 		url.searchParams.set("episode", selectedEpisode.toString());
 		url.searchParams.set("server_id", (index + 1).toString());
 		goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+		progressSync.scheduleSeek(() => iframeEl, progressSync.getPosition());
 		await updateProgressInDatabase();
 	}
 	function handleIframeLoad() {
 		isPlayerLoading = false; // Remove loading state when iframe loads
 	}
-	async function getProgress() {}
+	async function getProgress() {
+		await progressSync.loadAndSeek(() => iframeEl);
+	}
 	function previousEpisode() {
 		if (selectedEpisode > 1) {
 			selectEpisode(selectedEpisode - 1);
@@ -189,12 +206,17 @@
 	}
 
 	onMount(async () => {
-		await getProgress();
 		await fetchEpisodes(selectedSeason);
 
 		if (user) {
 			await updateProgressInDatabase();
 		}
+		await getProgress();
+	});
+
+	onMount(() => {
+		progressSync.start();
+		return () => progressSync.stop();
 	});
 </script>
 
@@ -298,7 +320,7 @@
 								<button
 									disabled={new Date(episode.air_date) > new Date()}
 									onclick={() => selectEpisode(index + 1)}
-									class={`w-full p-3 text-left transition-all duration-200 rounded-lg border flex items-start gap-4 ${
+									class={`w-full p-2.5 text-left transition-all duration-200 rounded-lg border flex items-center gap-3 ${
 										selectedEpisode === index + 1
 											? 'bg-white text-black border-white'
 											: new Date(episode.air_date) > new Date()
@@ -307,39 +329,34 @@
 									}`}
 									title={new Date(episode.air_date) > new Date()
 										? 'This episode is not live yet!'
-										: ''}
+										: episode.name}
 								>
-									<!-- Episode Still Image - Increased size -->
 									{#if episode.still_path}
 										<img
 											src={`https://image.tmdb.org/t/p/w300${episode.still_path}`}
 											alt={`Episode ${episode.episode_number} Still`}
-											class="w-24 h-auto rounded flex-shrink-0 object-cover aspect-video"
+											class="w-20 shrink-0 rounded object-cover aspect-video"
 										/>
 									{:else}
-										<!-- Placeholder if no image - Increased size -->
 										<div
-											class="w-24 h-14 rounded flex-shrink-0 bg-gray-700 flex items-center justify-center"
+											class="w-20 shrink-0 aspect-video rounded bg-gray-700 flex items-center justify-center"
 										>
-											<!-- Increased width (w-24) and height (h-14) -->
-											<span class="text-xs text-gray-500">No Image</span>
+											<span class="text-[10px] text-gray-400">No Image</span>
 										</div>
 									{/if}
 									<!-- Episode Details -->
-									<div class="flex-1 min-w-0 flex flex-col">
-										<div class="font-medium truncate">{episode.name}</div>
-										<div class="flex items-center gap-2 mt-1 text-xs text-gray-400">
-											<span>Episode {episode.episode_number}</span>
-											<span>&#8226;</span>
-											<span>{episode.air_date}</span>
+									<div class="min-w-0 flex-1">
+										<div class="flex items-center gap-1.5 text-[11px] whitespace-nowrap opacity-70">
+											<span class="shrink-0 font-semibold">Ep {episode.episode_number}</span>
+											<span class="shrink-0">&#8226;</span>
+											<span class="truncate">{episode.air_date}</span>
 										</div>
-										<!-- Optional: Add a brief overview snippet if available and space allows -->
-										<!-- <p class="text-xs text-gray-500 mt-1 truncate">{episode.overview || 'No overview available.'}</p> -->
+										<div class="mt-0.5 text-sm font-medium leading-snug line-clamp-2">
+											{episode.name}
+										</div>
 									</div>
-									<!-- Play Icon for Selected Episode -->
 									{#if selectedEpisode === index + 1}
-										<Play size={18} class="flex-shrink-0 self-center" />
-										<!-- Slightly larger play icon -->
+										<Play size={16} class="shrink-0" />
 									{/if}
 								</button>
 							{/each}
@@ -381,6 +398,7 @@
 							</div>
 						{/if}
 						<iframe
+							bind:this={iframeEl}
 							src={iframeSources[selectedSource]}
 							class="absolute inset-0 block h-full w-full min-h-0 min-w-0 border-0"
 							allowfullscreen
@@ -393,7 +411,7 @@
 				</div>
 
 				<div
-					class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 bg-gray-900 border border-gray-800 rounded-lg flex-shrink-0"
+					class="relative z-10 mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 bg-gray-900 border border-gray-800 rounded-lg flex-shrink-0"
 				>
 					<div class="flex items-center justify-center sm:justify-start gap-2 shrink-0">
 						<button

@@ -14,6 +14,8 @@
 	import { goto } from "$app/navigation";
 	import { PersistedState } from "runed";
 	import { getEpisodes } from "$lib/remote/series.remote";
+	import { createProgressSync } from "$lib/player/watchProgress.js";
+	import { setCinemaDimmed } from "$lib/state/cinemaDim.svelte.js";
 	import {
 		Heart,
 		ChevronLeft,
@@ -43,6 +45,23 @@
 	let idleTimerId = null;
 
 	let chromeDimmed = $derived.by(() => idleDimmed || manualCinema.current);
+
+	$effect(() => {
+		setCinemaDimmed(chromeDimmed);
+		return () => setCinemaDimmed(false);
+	});
+
+	let iframeEl = $state();
+	const progressSync = createProgressSync({
+		type: "series",
+		getMeta: () => ({
+			tmdbId: seriesDetailData.id,
+			seasonId: selectedSeason,
+			episodeId: selectedEpisode,
+			serverId: selectedSource + 1
+		}),
+		isEnabled: () => !!user
+	});
 
 	function armIdleTimer() {
 		if (idleTimerId) clearTimeout(idleTimerId);
@@ -166,18 +185,8 @@
 	async function selectEpisode(episodeId) {
 		selectedEpisode = episodeId;
 		isPlayerLoading = true;
+		progressSync.reset();
 		await updateProgressInDatabase();
-	}
-
-	function saveProgressAndSelectedSource() {
-		localStorage.setItem(
-			STORAGE_KEY,
-			JSON.stringify({
-				season: selectedSeason.current,
-				episode: selectedEpisode.current,
-				source: selectedSource.current
-			})
-		);
 	}
 
 	async function changeSource(index) {
@@ -188,6 +197,7 @@
 		url.searchParams.set("episode", selectedEpisode.toString());
 		url.searchParams.set("server_id", (index + 1).toString());
 		goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+		progressSync.scheduleSeek(() => iframeEl, progressSync.getPosition());
 		await updateProgressInDatabase();
 	}
 
@@ -195,7 +205,9 @@
 		isPlayerLoading = false;
 	}
 
-	async function getProgress() {}
+	async function getProgress() {
+		await progressSync.loadAndSeek(() => iframeEl);
+	}
 
 	function previousEpisode() {
 		if (selectedEpisode > 1) {
@@ -291,6 +303,7 @@
 		window.addEventListener("wheel", onActivity, opts);
 		window.addEventListener("touchstart", onActivity, opts);
 		armIdleTimer();
+		progressSync.start();
 		return () => {
 			window.removeEventListener("pointermove", onActivity, opts);
 			window.removeEventListener("pointerdown", onActivity, opts);
@@ -299,18 +312,10 @@
 			window.removeEventListener("touchstart", onActivity);
 			if (idleTimerId) clearTimeout(idleTimerId);
 			idleTimerId = null;
+			progressSync.stop();
 		};
 	});
 </script>
-
-<svelte:window
-	on:message={() => {
-		if (data.type === "PLAYER_EVENT") {
-			const { event, currentTime, duration } = data.data;
-			console.log(`Player event: ${event} at ${currentTime}s of ${duration}s`);
-		}
-	}}
-/>
 
 <div class="flex flex-col min-h-0 text-white bg-black">
 	<!-- Mobile Header -->
@@ -416,7 +421,7 @@
 								{#if episode !== 0}
 									<button
 										onclick={() => selectEpisode(index + 1)}
-										class={`w-full p-2 sm:p-3 text-left transition-all duration-200 rounded-lg border flex items-start gap-2 sm:gap-4 ${
+										class={`w-full p-2.5 text-left transition-all duration-200 rounded-lg border flex items-center gap-3 ${
 											selectedEpisode === index + 1
 												? "bg-white text-black border-white"
 												: new Date(episode.air_date) > new Date()
@@ -425,34 +430,35 @@
 										}`}
 										title={new Date(episode.air_date) > new Date()
 											? "This episode is not live yet!"
-											: ""}
+											: episode.name}
 									>
 										{#if episode.still_path}
 											<img
 												loading="eager"
 												src={`https://image.tmdb.org/t/p/w300${episode.still_path}`}
 												alt={`Episode ${episode.episode_number} Still`}
-												class="w-16 sm:w-20 md:w-24 h-auto rounded flex-shrink-0 object-cover aspect-video"
+												class="w-20 shrink-0 rounded object-cover aspect-video"
 											/>
 										{:else}
 											<div
-												class="w-16 sm:w-20 md:w-24 h-9 sm:h-11 md:h-14 rounded flex-shrink-0 bg-gray-700 flex items-center justify-center"
+												class="w-20 shrink-0 aspect-video rounded bg-gray-700 flex items-center justify-center"
 											>
-												<span class="text-xs text-gray-500">No Image</span>
+												<span class="text-[10px] text-gray-400">No Image</span>
 											</div>
 										{/if}
 										<!-- Episode Details -->
-										<div class="flex-1 min-w-0 flex flex-col">
-											<div class="font-medium truncate text-sm sm:text-base">{episode.name}</div>
-											<div class="flex items-center gap-1 sm:gap-2 mt-1 text-xs text-gray-400">
-												<span>Ep {episode.episode_number}</span>
-												<span>&#8226;</span>
-												<span class="hidden sm:inline">{episode.air_date}</span>
-												<span class="sm:hidden">{episode.air_date?.slice(0, 7)}</span>
+										<div class="min-w-0 flex-1">
+											<div class="flex items-center gap-1.5 text-[11px] whitespace-nowrap opacity-70">
+												<span class="shrink-0 font-semibold">Ep {episode.episode_number}</span>
+												<span class="shrink-0">&#8226;</span>
+												<span class="truncate">{episode.air_date}</span>
+											</div>
+											<div class="mt-0.5 text-sm font-medium leading-snug line-clamp-2">
+												{episode.name}
 											</div>
 										</div>
 										{#if selectedEpisode === index + 1}
-											<Play size={16} class="sm:w-5 sm:h-5 flex-shrink-0 self-center" />
+											<Play size={16} class="shrink-0" />
 										{/if}
 									</button>
 								{/if}
@@ -503,6 +509,7 @@
 							</div>
 						{/if}
 						<iframe
+							bind:this={iframeEl}
 							src={iframeSources[selectedSource]}
 							class="absolute inset-0 block h-full w-full min-h-0 min-w-0 border-0"
 							allowfullscreen
@@ -516,7 +523,7 @@
 				</div>
 
 				<div
-					class="mt-2 sm:mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 bg-gray-900 border border-gray-800 rounded-lg flex-shrink-0 transition-opacity duration-500 {chromeDimmed
+					class="relative z-10 mt-2 sm:mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 bg-gray-900 border border-gray-800 rounded-lg flex-shrink-0 transition-opacity duration-500 {chromeDimmed
 						? 'opacity-30'
 						: 'opacity-100'}"
 				>

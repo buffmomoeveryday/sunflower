@@ -38,6 +38,12 @@
 	const bgImage = $derived(getBgImage());
 	let activeBgImage = $state(null);
 
+	const hideBackdrop = $derived.by(() => {
+		const path = $page.url.pathname;
+		if (path.includes("/channels")) return true;
+		return /^\/(movie|series|dramas|anime)\/[^/]+/.test(path);
+	});
+
 	$effect(() => {
 		if (bgImage) {
 			const current = bgImage;
@@ -56,7 +62,7 @@
 
 <Navbar user={data.user} {gravitarUrl} />
 <Toaster richColors />
-{#if activeBgImage && !$page.url.pathname.includes("/channels")}
+{#if activeBgImage && !hideBackdrop}
 	<div class="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
 		{#key activeBgImage}
 			<div

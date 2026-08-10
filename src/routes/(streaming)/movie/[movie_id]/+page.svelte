@@ -10,6 +10,7 @@
 	import { PersistedState } from "runed";
 	import { Menu, X, Info } from "lucide-svelte";
 	import MovieCard from "$lib/components/card/MovieCard.svelte";
+	import { createProgressSync } from "$lib/player/watchProgress.js";
 
 
 	let { data } = $props();
@@ -18,6 +19,13 @@
 	let movie_data = data.movieData;
 	let movie_id = data.movieData.id;
 	let recommendation_data = data.recommendation_data;
+
+	let iframeEl = $state();
+	const progressSync = createProgressSync({
+		type: "movie",
+		getMeta: () => ({ tmdbId: movie_data.id }),
+		isEnabled: () => !!user
+	});
 
 	let isBookmarked = $derived(isMovieBookmarkedLocal(movie_data.id));
 
@@ -49,6 +57,7 @@
 	function changeSource(index) {
 		selectedSource = index;
 		isPlayerLoading = true;
+		progressSync.scheduleSeek(() => iframeEl, progressSync.getPosition());
 	}
 
 	function handleIframeLoad() {
@@ -98,30 +107,26 @@
 				release_date: movie_data.release_date,
 				genre_ids: movie_data.genres ? movie_data.genres.map((g) => g.id) : []
 			});
+			await progressSync.loadAndSeek(() => iframeEl);
 		} catch (error) {
 			console.error("Error adding to watch history:", error);
 		}
 	});
 
-
-	function handleMessage() {
-		if (data.type === "PLAYER_EVENT") {
-			const { event, currentTime, duration } = data.data;
-			console.log(`Player event: ${event} at ${currentTime}s of ${duration}s`);
-		}
-	}
+	onMount(() => {
+		progressSync.start();
+		return () => progressSync.stop();
+	});
 </script>
 
-<svelte:window on:message={handleMessage} />
-
 <div class="flex flex-col min-h-screen bg-black text-white overflow-x-hidden">
-	<!-- Main row: cap height on lg so the player fits the viewport; sidebar scrolls inside -->
+	<!-- Main row: content-sized so the player and its controls always flow above the sections below -->
 	<div
-		class="movie-detail-hero flex flex-col lg:flex-row flex-1 min-h-0 p-2 sm:p-4 md:p-6 gap-4 md:gap-6 lg:h-[calc(100svh-10rem)] lg:max-h-[calc(100svh-10rem)] lg:shrink-0 lg:items-stretch"
+		class="movie-detail-hero flex flex-col lg:flex-row p-2 sm:p-4 md:p-6 gap-4 md:gap-6 lg:items-start"
 	>
 		<!-- Movie Details Sidebar (Desktop: always visible, Mobile: toggleable) -->
 		<div
-			class="w-full lg:w-80 lg:flex-shrink-0 lg:min-h-0 lg:max-h-full lg:overflow-y-auto order-2 lg:order-1
+			class="w-full lg:w-80 lg:flex-shrink-0 lg:sticky lg:top-20 lg:self-start order-2 lg:order-1
                     {isSidebarVisible ? 'block' : 'hidden'} lg:block"
 		>
 			<!-- Close button for mobile -->
@@ -239,8 +244,8 @@
 			</div>
 		</div>
 
-		<!-- Video player then control bar (layout matches series). lg: grid reserves a row for servers so they are never clipped. -->
-		<div class="flex-1 flex flex-col min-h-0 min-w-0 order-1 lg:order-2 lg:h-full lg:min-h-0">
+		<!-- Video player then control bar, both in normal flow so the servers are never clipped -->
+		<div class="flex-1 flex flex-col min-w-0 order-1 lg:order-2">
 			<!-- Mobile Header with Toggle Button -->
 			<div class="lg:hidden flex items-center justify-between mb-3 shrink-0">
 				<h1 class="text-lg font-bold truncate">
@@ -256,10 +261,8 @@
 				</button>
 			</div>
 
-			<div
-				class="movie-player-stack flex flex-1 flex-col min-h-0 lg:grid lg:min-h-0 lg:grid-rows-[minmax(0,1fr)_auto] lg:gap-3"
-			>
-				<div class="movie-player-shell min-h-0 min-w-0 overflow-hidden lg:h-full lg:min-h-0">
+			<div class="movie-player-stack flex flex-col">
+				<div class="movie-player-shell min-w-0">
 					<div
 						class="movie-player-frame relative rounded-lg overflow-hidden bg-black border-2 border-gray-700 shadow-lg"
 					>
@@ -277,6 +280,7 @@
 								</div>
 							{/if}
 							<iframe
+								bind:this={iframeEl}
 								src={iframeSources[selectedSource]}
 								class="absolute inset-0 block h-full w-full min-h-0 min-w-0 border-0"
 								allow="encrypted-media; fullscreen; autoplay"
@@ -291,7 +295,7 @@
 				</div>
 
 			<div
-				class="mt-2 sm:mt-3 lg:mt-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 bg-gray-900 border border-gray-800 rounded-lg shrink-0"
+				class="relative z-10 mt-2 sm:mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 bg-gray-900 border border-gray-800 rounded-lg shrink-0"
 			>
 				<div class="hidden sm:flex items-center justify-center sm:justify-start gap-2 shrink-0" aria-hidden="true"></div>
 
@@ -355,50 +359,20 @@
 </div>
 
 <style>
-	/* Fixed hero height on lg gives the player column a definite block size (flex + cqh was collapsing). */
-	@media (min-width: 1024px) {
-		.movie-detail-hero {
-			min-height: 0;
-		}
-	}
-
 	.movie-player-shell {
-		flex: 1 1 0%;
-		min-height: 0;
-		min-width: 0;
 		width: 100%;
-		align-self: stretch;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	@media (min-width: 1024px) {
-		.movie-player-shell {
-			flex: none;
-			height: 100%;
-			align-items: flex-start;
-		}
+		min-width: 0;
 	}
 
 	.movie-player-frame {
 		box-sizing: border-box;
 		width: 100%;
-		max-width: 100%;
-		max-height: 100%;
+		/* Cap the width by the height the viewport can spare (navbar, page padding
+		   and the server bar), so the player scales down proportionally instead of
+		   growing past the layout and overlapping the sections below. */
+		max-width: min(100%, calc((100svh - 14rem) * 16 / 9));
 		aspect-ratio: 16 / 9;
-		height: auto;
 		margin-inline: auto;
-	}
-
-	@media (max-width: 1023px) {
-		.movie-player-shell {
-			min-height: max(11rem, min(56vh, calc(100dvh - 12rem)));
-		}
-
-		.movie-player-frame {
-			max-height: min(78vh, calc(100dvh - 10rem));
-		}
 	}
 
 	.line-clamp-5 {

@@ -79,6 +79,40 @@ const animeObject = v.object({
 	episodes: countFromApi
 });
 
+const nonNegativeSeconds = v.pipe(
+	v.union([v.string(), v.number()]),
+	v.transform((x) => {
+		const n = Math.floor(Number(x));
+		return Number.isFinite(n) && n > 0 ? n : 0;
+	})
+);
+
+const optionalPositiveSeconds = v.optional(
+	v.pipe(
+		v.nullish(v.union([v.string(), v.number()])),
+		v.transform((x) => {
+			if (x == null) return undefined;
+			const n = Math.floor(Number(x));
+			return Number.isFinite(n) && n > 0 ? n : undefined;
+		})
+	)
+);
+
+const watchProgressObject = v.object({
+	type: v.picklist(['movie', 'series']),
+	tmdb_id: v.union([v.string(), v.number()]),
+	position_seconds: nonNegativeSeconds,
+	duration_seconds: optionalPositiveSeconds,
+	season_id: optionalSeasonEpisode,
+	episode_id: optionalSeasonEpisode,
+	server_id: optionalServerId
+});
+
+const watchProgressQuery = v.object({
+	type: v.picklist(['movie', 'series']),
+	tmdb_id: v.union([v.string(), v.number()])
+});
+
 // --- Movie Commands ---
 export const toggleMovieBookmark = command(
 	movieObject,
@@ -170,7 +204,7 @@ export const addToMovieHistory = command(movieObject, async (movie) => {
 			});
 		} else {
 			await db.update(moviesWatchHistory)
-				.set({ createdAt: new Date() })
+				.set({ createdAt: new Date(), updatedAt: new Date() })
 				.where(eq(moviesWatchHistory.id, existing.id));
 		}
 		return { success: true };
@@ -266,12 +300,18 @@ export const addToSeriesHistory = command(seriesObject, async (series) => {
 		} else {
 			const resolvedServer =
 				nextServer != null ? clampServer(nextServer) : existing.serverId;
+			const nextSeason = series.season_id ? Number(series.season_id) : existing.seasonId;
+			const nextEpisode = series.episode_id ? Number(series.episode_id) : existing.episodeId;
+			const episodeChanged =
+				nextSeason !== existing.seasonId || nextEpisode !== existing.episodeId;
 			await db.update(seriesWatchHistory)
 				.set({
-					seasonId: series.season_id ? Number(series.season_id) : existing.seasonId,
-					episodeId: series.episode_id ? Number(series.episode_id) : existing.episodeId,
+					seasonId: nextSeason,
+					episodeId: nextEpisode,
 					serverId: resolvedServer,
-					createdAt: new Date()
+					...(episodeChanged ? { positionSeconds: 0, durationSeconds: null } : {}),
+					createdAt: new Date(),
+					updatedAt: new Date()
 				})
 				.where(eq(seriesWatchHistory.id, existing.id));
 		}
@@ -463,7 +503,9 @@ export const getMoviesHistory = command(v.any(), async () => {
 			title: m.title,
 			vote_average: m.voteAverage,
 			release_date: m.releaseDate,
-			genre_ids: m.genreIds ? JSON.parse(m.genreIds) : []
+			genre_ids: m.genreIds ? JSON.parse(m.genreIds) : [],
+			position_seconds: m.positionSeconds ?? 0,
+			duration_seconds: m.durationSeconds ?? null
 		}));
 
 	} catch (err) {
@@ -492,7 +534,9 @@ export const getSeriesHistory = command(v.any(), async () => {
 			number_of_seasons: m.numberOfSeasons,
 			season_id: m.seasonId,
 			episode_id: m.episodeId,
-			server_id: m.serverId
+			server_id: m.serverId,
+			position_seconds: m.positionSeconds ?? 0,
+			duration_seconds: m.durationSeconds ?? null
 		}));
 	} catch (err) {
 		return [];
@@ -553,5 +597,98 @@ export const removeAnimeHistory = command(v.string(), async (id) => {
 		return { success: true };
 	} catch (err) {
 		return { success: false };
+	}
+});
+
+// --- Playback position sync ---
+export const updateWatchProgress = command(watchProgressObject, async (input) => {
+	const event = getRequestEvent();
+	const user = event.locals.user;
+	if (!user) return { success: false, error: 'Not logged in' };
+
+	const tmdbId = input.tmdb_id.toString();
+	const now = new Date();
+
+	try {
+		if (input.type === 'movie') {
+			const existing = await db
+				.select()
+				.from(moviesWatchHistory)
+				.where(and(eq(moviesWatchHistory.tmdbId, tmdbId), eq(moviesWatchHistory.userId, user.id)))
+				.get();
+			if (!existing) return { success: false, error: 'No history row' };
+
+			await db
+				.update(moviesWatchHistory)
+				.set({
+					positionSeconds: input.position_seconds,
+					durationSeconds: input.duration_seconds ?? existing.durationSeconds,
+					updatedAt: now
+				})
+				.where(eq(moviesWatchHistory.id, existing.id));
+			return { success: true };
+		}
+
+		const existing = await db
+			.select()
+			.from(seriesWatchHistory)
+			.where(and(eq(seriesWatchHistory.tmdbId, tmdbId), eq(seriesWatchHistory.userId, user.id)))
+			.get();
+		if (!existing) return { success: false, error: 'No history row' };
+
+		const set = {
+			positionSeconds: input.position_seconds,
+			durationSeconds: input.duration_seconds ?? existing.durationSeconds,
+			updatedAt: now
+		};
+		if (input.season_id != null) set.seasonId = Number(input.season_id);
+		if (input.episode_id != null) set.episodeId = Number(input.episode_id);
+		if (input.server_id != null) set.serverId = input.server_id;
+
+		await db.update(seriesWatchHistory).set(set).where(eq(seriesWatchHistory.id, existing.id));
+		return { success: true };
+	} catch (err) {
+		console.error('Error updating watch progress:', err);
+		return { success: false };
+	}
+});
+
+export const getWatchProgress = command(watchProgressQuery, async ({ type, tmdb_id }) => {
+	const event = getRequestEvent();
+	const user = event.locals.user;
+	if (!user) return null;
+
+	const tmdbId = tmdb_id.toString();
+
+	try {
+		if (type === 'movie') {
+			const row = await db
+				.select()
+				.from(moviesWatchHistory)
+				.where(and(eq(moviesWatchHistory.tmdbId, tmdbId), eq(moviesWatchHistory.userId, user.id)))
+				.get();
+			if (!row) return null;
+			return {
+				positionSeconds: row.positionSeconds ?? 0,
+				durationSeconds: row.durationSeconds ?? null
+			};
+		}
+
+		const row = await db
+			.select()
+			.from(seriesWatchHistory)
+			.where(and(eq(seriesWatchHistory.tmdbId, tmdbId), eq(seriesWatchHistory.userId, user.id)))
+			.get();
+		if (!row) return null;
+		return {
+			positionSeconds: row.positionSeconds ?? 0,
+			durationSeconds: row.durationSeconds ?? null,
+			seasonId: row.seasonId ?? 1,
+			episodeId: row.episodeId ?? 1,
+			serverId: row.serverId ?? 1
+		};
+	} catch (err) {
+		console.error('Error reading watch progress:', err);
+		return null;
 	}
 });

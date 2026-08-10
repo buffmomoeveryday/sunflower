@@ -134,9 +134,13 @@ export const moviesWatchHistory = sqliteTable("movies_watch_history", {
 	voteAverage: text("vote_average").notNull(),
 	releaseDate: text("release_date").notNull(),
 	genreIds: text("genre_ids").notNull(),
+	positionSeconds: integer("position_seconds").notNull().default(0),
+	durationSeconds: integer("duration_seconds"),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .$defaultFn(() => new Date())
     .notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .$defaultFn(() => new Date()),
 });
 
 export const seriesWatchHistory = sqliteTable("series_watch_history", {
@@ -153,9 +157,13 @@ export const seriesWatchHistory = sqliteTable("series_watch_history", {
 	seasonId: integer("season_id").default(1),
 	episodeId: integer("episode_id").default(1),
 	serverId: integer("server_id").notNull().default(1),
+	positionSeconds: integer("position_seconds").notNull().default(0),
+	durationSeconds: integer("duration_seconds"),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .$defaultFn(() => new Date())
     .notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .$defaultFn(() => new Date()),
 });
 
 export const animesWatchHistory = sqliteTable("animes_watch_history", {
